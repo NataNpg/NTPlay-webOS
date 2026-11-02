@@ -28,9 +28,14 @@ const io = 'IntersectionObserver' in window ? new IntersectionObserver((es) => {
 function img(src, cls, alt) {
   const i = h('img', cls || '');
   i.decoding = 'async';
-  i.onerror = () => { if (alt && i.src !== alt) { i.src = alt; alt = ''; } else i.style.visibility = 'hidden'; };
+  const fail = () => { if (alt && i.src !== alt) { i.src = alt; alt = ''; } else { i.style.visibility = 'hidden'; if (i.parentNode) i.parentNode.classList.remove('ok'); } };
+  i.onerror = fail;
+  // carregou: esconde o nome escrito atrás (logo transparente não mistura com o texto); imagem vazia (1x1) conta como erro
+  i.onload = () => { if (i.naturalWidth <= 2) return fail(); if (i.parentNode) i.parentNode.classList.add('ok'); };
   if (!src) { i.style.visibility = 'hidden'; return i; }
   if (io) { i.dataset.src = src; io.observe(i); } else i.src = src;
+  // servidor de logo lento: depois de 8 s tenta o reserva
+  if (alt) setTimeout(() => { if (!i.complete && i.src && document.body.contains(i)) fail(); }, 12000);
   return i;
 }
 

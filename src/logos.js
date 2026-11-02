@@ -13,6 +13,14 @@ function expand(u) {
   if (u && u[0] === '~') { const p = map._p && map._p[u.slice(0, 2)]; if (p) return p + u.slice(2); }
   return u || '';
 }
+/** devolve [logo, exato?] — exato = o nome do canal bate inteiro com a base */
+export function find2(name) {
+  if (!map) return ['', false];
+  const k = logoKey(name);
+  if (k.length < 2) return ['', false];
+  const u = map[k] || map[k.replace(/^canal/, '')] || map['canal' + k];
+  return u ? [expand(u), true] : [find(name), false];
+}
 export function find(name) {
   if (!map) return '';
   const k = logoKey(name);
@@ -30,8 +38,12 @@ export async function apply(lib) {
   if (!lib.live.length) return;
   await load();
   for (const it of lib.live) {
-    const f = find(it.title);
-    if (!f) continue;
-    if (!it.logo) it.logo = f; else if (f !== it.logo) it.logoAlt = f;
+    const [f, exact] = find2(it.title);
+    if (!f || f === it.logo) continue;
+    if (!it.logo) it.logo = f;
+    // logo da base com o nome exato do canal é conferido e leve: vem primeiro; o da lista fica de reserva.
+    // Muitas listas trazem logo quebrado, lento ou transparente, que nunca dá erro e deixa o card vazio.
+    else if (exact) { it.logoAlt = it.logo; it.logo = f; }
+    else it.logoAlt = f;
   }
 }

@@ -7,7 +7,7 @@ Roteiro do que preencher no **LG Seller Lounge** (https://seller.lgappstv.com). 
 
 1. **Conta de teste para o revisor** — crie no painel (`contas.html`) a conta `lgreview` com validade de 365 dias.
    Entre com ela no simulador ou na TV e adicione **somente** a lista de demonstração
-   `https://raw.githubusercontent.com/NataNpg/NTPlay-webOS/main/docs/demo.m3u` (vídeos livres: Apple, Mux, Blender).
+   `https://natanpg.github.io/NTPlay-webOS/demo.m3u` (vídeos livres e públicos de teste: Akamai, Apple, Google Shaka, Mux, Unified Streaming e filmes abertos da Blender Foundation — conferidos em 02/11/2026; os vídeos de exemplo do Google que estavam antes saíram do ar).
    Nunca entregue ao revisor uma lista com canais pagos/TV fechada: é recusa na hora e expõe você.
 2. **Política de privacidade publicada** — ative o GitHub Pages do repositório (Settings → Pages → branch `main`,
    pasta `/docs`). Endereço: `https://natanpg.github.io/NTPlay-webOS/privacidade.html`.
@@ -56,7 +56,7 @@ Roteiro do que preencher no **LG Seller Lounge** (https://seller.lgappstv.com). 
 1. Abra o app. Tela de entrada: Usuário `lgreview`, Senha `<a senha da conta>` → **Entrar**.
 2. Tela inicial (Recomendações). Use ◀ ▶ nas abas: TV AO VIVO, FILMES, SÉRIES, ANIMES, FAVORITOS, FUTEBOL.
 3. **TV AO VIVO** → ▼ até um canal → **OK** reproduz. ▲/▼ ou CH+/− trocam de canal. **Voltar** sai do player.
-4. **FILMES** → escolha "Big Buck Bunny" → **OK** abre detalhes → **▶ Assistir**. ◀/▶ volta/avança 10 s;
+4. **FILMES** → escolha "Big Buck Bunny" ou "Sintel" → **OK** abre detalhes → **▶ Assistir**. ◀/▶ volta/avança 10 s;
    OK mostra os controles (legenda, áudio, favoritar, sair).
 5. **SÉRIES** → "Blender Open Movies" → temporadas e episódios → OK em um episódio.
 6. Segure **OK** (ou botão vermelho) sobre um título para favoritar; ele aparece em FAVORITOS.
@@ -68,7 +68,7 @@ Roteiro do que preencher no **LG Seller Lounge** (https://seller.lgappstv.com). 
 ## 5. Notas para o revisor (campo de observações)
 
 > Test account: user `lgreview` / password `…` (valid until …). The account already contains a demo playlist with
-> royalty-free streams (Apple/Mux test streams and Blender Foundation open movies). NTPlay is a player only and does
+> royalty-free public test streams (Akamai, Apple, Google Shaka, Mux, Unified Streaming) and Blender Foundation open movies (CC-BY). NTPlay is a player only and does
 > not provide content; users add their own M3U/Xtream playlists. Login is required because favorites and playback
 > progress are synced (end-to-end encrypted) across the user's devices.
 

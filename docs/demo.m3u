@@ -1,15 +1,17 @@
 #EXTM3U
+#EXTINF:-1 tvg-logo="" group-title="Demonstração | Ao vivo",Akamai Live Test (HLS ao vivo)
+https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8
 #EXTINF:-1 tvg-logo="" group-title="Demonstração | Ao vivo",Apple BipBop (HLS)
 https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8
-#EXTINF:-1 tvg-logo="" group-title="Demonstração | Ao vivo",Mux Test Stream (HLS)
-https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
+#EXTINF:-1 tvg-logo="" group-title="Demonstração | Ao vivo",Shaka Angel One (HLS)
+https://storage.googleapis.com/shaka-demo-assets/angel-one-hls/hls.m3u8
 #EXTINF:-1 tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Big_buck_bunny_poster_big.jpg/330px-Big_buck_bunny_poster_big.jpg" group-title="Filmes | Animação (Creative Commons)",Big Buck Bunny (2008)
-https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4
-#EXTINF:-1 tvg-logo="" group-title="Filmes | Animação (Creative Commons)",Sintel (2010)
-https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4
-#EXTINF:-1 tvg-logo="" group-title="Filmes | Ficção (Creative Commons)",Tears of Steel (2012)
-https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4
-#EXTINF:-1 tvg-logo="" group-title="Séries | Creative Commons",Blender Open Movies S01E01
-https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4
-#EXTINF:-1 tvg-logo="" group-title="Séries | Creative Commons",Blender Open Movies S01E02
-https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4
+https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
+#EXTINF:-1 tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Sintel_poster.jpg/330px-Sintel_poster.jpg" group-title="Filmes | Animação (Creative Commons)",Sintel (2010)
+https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4
+#EXTINF:-1 tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Tos-poster.png/330px-Tos-poster.png" group-title="Filmes | Ficção (Creative Commons)",Tears of Steel (2012)
+https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8
+#EXTINF:-1 tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/ElephantsDreamPoster.jpg/330px-ElephantsDreamPoster.jpg" group-title="Séries | Creative Commons",Blender Open Movies S01E01
+https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4
+#EXTINF:-1 tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/ElephantsDreamPoster.jpg/330px-ElephantsDreamPoster.jpg" group-title="Séries | Creative Commons",Blender Open Movies S01E02
+https://test-streams.mux.dev/tos_ismc/main.m3u8

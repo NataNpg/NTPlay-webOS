@@ -94,3 +94,13 @@ Roteiro do que preencher no **LG Seller Lounge** (https://seller.lgappstv.com). 
 - Se a loja perguntar sobre pagamento: a venda de acesso fora da loja pode exigir explicação. Declare o app como
   **gratuito**. Cobrar acesso por fora sem usar o pagamento da LG pode ser questionado.
 - Atualizações do app passam por nova revisão a cada envio.
+
+## 8. Envio feito — 02/11/2026
+
+- Status no Seller Lounge: **QA Request** (empacotamento aceito). Não clicar em "Request Cancel".
+- Pacotes 1.4.7: `NTPlay-webOS-1920x1080.ipk` (TVs UHD) e `NTPlay-webOS-1280x720.ipk` (TVs FHD; build com `RES=1280x720`, a interface é reduzida por zoom em `app/js-polyfill.js`).
+- País de serviço: só Brasil. Idioma: Português. Dados salvos: Canadá (Supabase ca-central-1).
+- Faturamento: terceiros, Assinatura (SVOD), fora do app (Pix / link). Sem anúncio. Geo IP: Não.
+- Self-check: N/A em 4, 11, 12, 18, 19, 23, 24, 25, 41, 42, 48, 52; Pass no resto.
+- Risco conhecido: "Mostrar conteúdo adulto" liga sem PIN (item 23). Se a LG reprovar por isso, pôr PIN e mandar 1.4.8.
+- Regra da LG: 5 recusas seguidas (ou 3 pelo mesmo problema) = 3 meses sem poder enviar. Ler o motivo antes de reenviar.

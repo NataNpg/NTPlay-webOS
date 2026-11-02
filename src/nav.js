@@ -29,7 +29,11 @@ export function focus(el, noScroll) {
   el.classList.add('focus');
   if (!noScroll) reveal(el);
   if (el.onfocus2) el.onfocus2();
+  if (hook) hook(el);
 }
+let hook = null;
+/** função chamada a cada mudança de foco (prévia do canal) */
+export function onFocus(fn) { hook = fn; }
 
 function reveal(el) {
   let p = el.parentElement;

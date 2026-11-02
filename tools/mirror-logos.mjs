@@ -27,9 +27,12 @@ async function one([name, url]) {
   const c = cache + '/' + name + '.webp';
   if (!existsSync(c)) {
     let buf = null;
-    for (let t = 0; t < 2 && !buf; t++) {
+    const wm = /wikimedia\.org/.test(url);
+    for (let t = 0; t < (wm ? 5 : 2) && !buf; t++) {
       try {
-        const r = await fetch(url, { headers: { 'User-Agent': 'NTPlay-logo-mirror/1.0 (https://github.com/NataNpg/NTPlay-webOS)' }, signal: AbortSignal.timeout(20000) });
+        if (wm) await wmSlot();
+        const r = await fetch(url, { headers: { 'User-Agent': 'NTPlay-logo-mirror/1.0 (https://github.com/NataNpg/NTPlay-webOS; djnatan0@live.com)' }, signal: AbortSignal.timeout(20000) });
+        if (r.status === 429) { await new Promise((ok) => setTimeout(ok, 4000 * (t + 1))); continue; }
         if (r.ok && !/removed/.test(r.url)) buf = Buffer.from(await r.arrayBuffer());
       } catch (e) {}
     }
@@ -39,6 +42,9 @@ async function one([name, url]) {
   }
   copyFileSync(c, out + '/' + name + '.webp'); done.add(name); ok++;
 }
+// no máximo ~4 pedidos por segundo à wikimedia
+let wmNext = 0;
+async function wmSlot() { const now = Date.now(); const at = Math.max(now, wmNext); wmNext = at + 250; if (at > now) await new Promise((ok) => setTimeout(ok, at - now)); }
 async function worker() { while (i < list.length) await one(list[i++]); }
 await Promise.all(Array.from({ length: 16 }, worker));
 for (const [k, u] of Object.entries(map)) {

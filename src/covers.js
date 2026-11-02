@@ -116,6 +116,8 @@ export async function wiki(it, st) {
   const t = clean(it); if (!t) return null;
   if (wcache.has(it.key)) return wcache.get(it.key);
   const y = yearOf(it.title);
+  // título de uma palavra só e sem ano ("A Fera", "A Baleia", "Fragmentado") casa com o filme errado com frequência
+  if (!y && it.kind !== 'l' && norm(t).split(' ').filter((w) => !STOPW.has(w)).length < 2) { wcache.set(it.key, null); return null; }
   const hint = it.kind === 'm' ? ['filme', 'film'] : it.kind === 's' ? ['série', 'series'] : ['canal de televisão', 'tv channel'];
   let found = null;
   for (const [lang, h] of [['pt', hint[0]], ['en', hint[1]]]) {

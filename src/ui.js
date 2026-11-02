@@ -2,11 +2,11 @@
 import { S, reload, addUrl, addXtream, refreshList, deleteList, toggleList, loadAccounts, toggleFav, groups, groupAdd, groupDelete,
   continueList, removeProg, login, logout, accessText, syncNow, retryPending, dropPending } from './state.js';
 import { Store } from './store.js';
-import { focus, first, pushKeys, K, current } from './nav.js';
+import { focus, first, pushKeys, K, current, onFocus } from './nav.js';
 import { esc, yearOf, quality, audioTag, animeSrc, cleanT, fmt, hhmm, norm } from './util.js';
 import * as X from './xtream.js';
 import * as F from './futebol.js';
-import { play, isOpen, close as closePlayer } from './player.js';
+import { play, isOpen, close as closePlayer, preview, stopPreview } from './player.js';
 import * as Covers from './covers.js';
 import { ic } from './icons.js';
 
@@ -35,7 +35,7 @@ function img(src, cls, alt, miss, alt2) {
   // que a TV não abre e imagem enorme) → busca de capa em outro lugar
   const q = [];
   const add = (u) => { if (u && q.indexOf(u) < 0) q.push(u); };
-  add(src); add(alt); add(alt2); add(proxy(src)); add(proxy(alt));
+  add(src); add(alt); add(alt2);
   let k = 0;
   if (miss) i._miss = () => { i._miss = null; miss((u) => { q.length = 0; k = 0; add(u); add(proxy(u)); i.style.visibility = ''; i.src = q[k++]; }); };
   const fail = () => {
@@ -45,7 +45,7 @@ function img(src, cls, alt, miss, alt2) {
     if (i._miss) i._miss();
   };
   // servidor lento: depois de 10 s passa para a próxima opção
-  const arm = () => { clearTimeout(i._t); i._t = setTimeout(() => { if (!i.complete && document.body.contains(i)) fail(); }, 10000); };
+  const arm = () => { clearTimeout(i._t); i._t = setTimeout(() => { if (!i.complete && document.body.contains(i)) fail(); }, 6000); };
   i.onerror = fail;
   // carregou: esconde o nome escrito atrás (logo transparente não mistura com o texto); imagem vazia (1x1) conta como erro
   i.onload = () => { clearTimeout(i._t); if (i.naturalWidth <= 2) return fail(); if (i.parentNode) i.parentNode.classList.add('ok'); };
@@ -86,7 +86,7 @@ function refreshCard(it, u) {
   const n = c.querySelector('img'); if (n && n._go) n._go();
 }
 function open(it, ctx) {
-  if (it.kind === 'l') { V.focusKey = it.key; play(it, it.eps[0], { list: (ctx && ctx.list) || S.lib.live, back: restoreFocus }); }
+  if (it.kind === 'l') { V.focusKey = it.key; pvKey = ''; play(it, it.eps[0], { list: (ctx && ctx.list) || S.lib.live, back: restoreFocus }); }
   else showDetail(it);
 }
 function restoreFocus() {
@@ -125,6 +125,7 @@ function shelf(title, items, ctx, extra) {
 
 // ---------------------------------------------------------------- tela principal
 export function renderApp() {
+  stopPreview(); clearTimeout(pvT);
   const app = $('#app');
   app.innerHTML = '';
   const top = h('div', 'top');
@@ -212,6 +213,11 @@ function renderBrowse(kind) {
   sc.appendChild(grid(items, { list: items }, 'Nenhum item nesta categoria.'));
   main.appendChild(sc);
   body.appendChild(side); body.appendChild(main);
+  if (kind === 'live' && items.length) {
+    main.classList.add('withpv');
+    const pv = h('div', 'pv', '<div class="pv-screen"><div class="pv-msg">Escolha um canal</div></div><div class="pv-info"></div>');
+    body.appendChild(pv);
+  }
 }
 
 function renderAnime(body) {
@@ -284,9 +290,42 @@ async function renderFut(body) {
   }
 }
 
+// ---------------------------------------------------------------- prévia do canal (TV ao vivo)
+// Parado 1,2 s sobre um canal: toca numa tela pequena e mostra a programação (agora, sinopse, a seguir).
+let pvT = null, pvKey = '';
+onFocus((el) => {
+  const pv = document.querySelector('#app .pv');
+  if (!pv || V.stack.length || isOpen()) return;
+  const k = el.dataset && el.dataset.k;
+  if (!k || k[0] !== 'l' || !el.closest('.gridwrap')) return;
+  if (k === pvKey) return;
+  pvKey = k; clearTimeout(pvT); stopPreview();
+  const it = S.lib.byKey.get(k); if (!it) return;
+  const scr = pv.querySelector('.pv-screen'), info = pv.querySelector('.pv-info');
+  scr.classList.remove('pv-fail');
+  scr.querySelector('.pv-msg').textContent = 'Carregando…';
+  info.innerHTML = '<h3>' + esc(it.title) + '</h3><div class="muted">' + esc(it.group) + '</div><div class="pv-epg muted">Buscando programação…</div>';
+  pvT = setTimeout(() => {
+    if (pvKey !== k || !document.body.contains(pv) || document.querySelector('.modal')) return;
+    preview(scr, it);
+    X.shortEpg(it.eps[0].url, 3).then((l) => {
+      if (pvKey !== k) return;
+      const e = info.querySelector('.pv-epg'); if (!e) return;
+      const now = Date.now(), cur = l.find((p) => p.start <= now && p.stop > now), nx = l.find((p) => p.start > now);
+      if (!cur && !nx) { e.textContent = 'Sem programação para este canal.'; return; }
+      e.classList.remove('muted');
+      e.innerHTML = (cur ? '<div class="pv-now"><b>Agora</b> ' + hhmm(cur.start) + '–' + hhmm(cur.stop) + ' · ' + esc(cur.title) +
+        '<div class="epgbar"><i style="width:' + Math.round(100 * (now - cur.start) / (cur.stop - cur.start)) + '%"></i></div>' +
+        (cur.desc ? '<p>' + esc(cur.desc) + '</p>' : '') + '</div>' : '') +
+        (nx ? '<div class="pv-next"><b>A seguir</b> ' + hhmm(nx.start) + ' · ' + esc(nx.title) + '</div>' : '');
+    });
+  }, 1200);
+});
+
 // ---------------------------------------------------------------- detalhes
 const infoCache = new Map();
 function pushView(render, onBack) {
+  stopPreview(); clearTimeout(pvT); pvKey = '';
   const prev = current();
   const layer = h('div', 'layer open view');
   $('#views').appendChild(layer);
@@ -449,6 +488,7 @@ function showSearch() {
 
 // ---------------------------------------------------------------- caixas genéricas
 function modal(build) {
+  stopPreview(); clearTimeout(pvT); pvKey = '';
   const prev = current();
   const m = h('div', 'layer open modal');
   const box = h('div', 'box'); m.appendChild(box);

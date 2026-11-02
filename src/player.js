@@ -123,7 +123,49 @@ function applyScr() {
 
 // ---------------------------------------------------------------- abrir / fechar
 /** item + episódio; ctx.list = lista para trocar de canal/episódio */
+// ---------------------------------------------------------------- prévia (tela pequena na TV ao vivo)
+// Usa a mesma conexão que o player: precisa parar ANTES de abrir o canal em tela cheia (conta de 1 tela).
+let PV = null;
+export function preview(box, item) {
+  stopPreview();
+  const v = document.createElement('video');
+  v.className = 'pv-v'; v.autoplay = true;
+  box.insertBefore(v, box.firstChild);
+  const eng = engines(item.eps[0].url, true);
+  PV = { v, item, i: -1, hls: null, mp: null };
+  const me = PV;
+  const next = () => {
+    if (PV !== me) return;
+    stopPvEngine();
+    me.i++;
+    if (me.i >= eng.length || me.i > 2) { box.classList.add('pv-fail'); const m = box.querySelector('.pv-msg'); if (m) m.textContent = 'Prévia indisponível — aperte OK para abrir o canal'; return; }
+    const [kind, url] = eng[me.i];
+    if (kind === 'native') { v.src = url; }
+    else if (kind === 'hls') { const h = new Hls({ maxBufferLength: 10, capLevelToPlayerSize: true }); me.hls = h; h.loadSource(url); h.attachMedia(v); h.on(Hls.Events.ERROR, (e, d) => { if (d.fatal) next(); }); }
+    else { const p = mpegts.createPlayer({ type: 'mpegts', isLive: true, url }, { enableWorker: false, lazyLoad: false, fixAudioTimestampGap: false }); me.mp = p; p.attachMediaElement(v); p.load(); p.on(mpegts.Events.ERROR, () => next()); }
+    const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
+    clearTimeout(me.t); me.t = setTimeout(() => { if (PV === me && !(v.currentTime > 0)) next(); }, 12000);
+  };
+  v.addEventListener('playing', () => { clearTimeout(me.t); box.classList.add('pv-on'); box.classList.remove('pv-fail'); });
+  v.addEventListener('error', () => { if (!me.mp && !me.hls) next(); });
+  next();
+}
+function stopPvEngine() {
+  if (!PV) return;
+  try { if (PV.hls) PV.hls.destroy(); } catch (e) {}
+  try { if (PV.mp) { PV.mp.pause(); PV.mp.unload(); PV.mp.detachMediaElement(); PV.mp.destroy(); } } catch (e) {}
+  PV.hls = null; PV.mp = null;
+  try { PV.v.removeAttribute('src'); PV.v.load(); } catch (e) {}
+}
+export function stopPreview() {
+  if (!PV) return;
+  clearTimeout(PV.t); stopPvEngine();
+  if (PV.v.parentNode) { PV.v.parentNode.classList.remove('pv-on'); PV.v.parentNode.removeChild(PV.v); }
+  PV = null;
+}
+
 export function play(item, ep, ctx) {
+  stopPreview();
   close(true);
   const layer = $('#player');
   layer.innerHTML = '<video id="pl-v" autoplay></video><div id="pl-ui" class="pl-ui"></div><div id="pl-status" class="pl-status"></div><div id="pl-hint" class="pl-hint"></div><div id="pl-side" class="pl-side"></div>';

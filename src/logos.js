@@ -29,22 +29,26 @@ export function original(url) {
   return m ? 'https://i.imgur.com/' + m[1] + '.png' : '';
 }
 /** devolve [logo, exato?] — exato = o nome do canal bate inteiro com a base */
+// apelidos que as listas brasileiras usam e a base escreve diferente
+const ALIAS = { discoveryhehealth: 'discoveryhomeehealthlatinamerica', discoveryhomehealth: 'discoveryhomeehealthlatinamerica', sony: 'sonychannel',
+  studiouniversal: 'studiouniversallatinamerica', tntseries: 'tntserieslatinamerica', disneyjr: 'disneyjunior', warner: 'warnerchannel', universaltv: 'universal' };
+const exact = (k) => map[k] || map[ALIAS[k]] || map[k.replace(/^canal/, '')] || map['canal' + k] || map[k + 'channel'] || map[k + 'latinamerica'];
 export function find2(name) {
   if (!map) return ['', false];
   const k = logoKey(name);
   if (k.length < 2) return ['', false];
-  const u = map[k] || map[k.replace(/^canal/, '')] || map['canal' + k];
+  const u = exact(k);
   return u ? [expand(u), true] : [find(name), false];
 }
 export function find(name) {
   if (!map) return '';
   const k = logoKey(name);
   if (k.length < 2) return '';
-  let u = map[k] || map[k.replace(/^canal/, '')] || map['canal' + k];
+  let u = exact(k);
   if (!u) {
     // "Globo Bahia", "Band SP": tira palavras do fim até achar a rede ("Band")
     const w = String(name).replace(/\[.*?\]|\(.*?\)/g, ' ').split(/[\s|:\-]+/).filter(Boolean);
-    while (!u && w.length > 1) { w.pop(); const kk = logoKey(w.join(' ')); if (kk.length >= 3) u = map[kk]; }
+    while (!u && w.length > 1) { w.pop(); const kk = logoKey(w.join(' ')); if (kk.length >= 3) u = exact(kk); }
   }
   return expand(u);
 }

@@ -25,6 +25,7 @@ const P = {
   up: '<path d="M12 6l8 11H4z" fill="currentColor"/>',
   down: '<path d="M12 18L4 7h16z" fill="currentColor"/>',
   wait: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2.4" opacity=".35"/><path d="M12 3.5a8.5 8.5 0 0 1 8.5 8.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
+  screen: '<rect x="2.5" y="4.5" width="19" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M7 9V7.5h2.5M17 9V7.5h-2.5M7 15v1.5h2.5M17 15v1.5h-2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
   ball: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5l4 2.9-1.5 4.7h-5L8 10.4z" fill="currentColor"/>',
 };
 /** devolve o SVG do ícone (para usar dentro de innerHTML) */

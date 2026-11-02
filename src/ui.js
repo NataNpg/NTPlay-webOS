@@ -25,7 +25,7 @@ export function toast(m) {
 
 // ---------------------------------------------------------------- imagens sob demanda
 const io = 'IntersectionObserver' in window ? new IntersectionObserver((es) => {
-  for (const e of es) if (e.isIntersecting) { const i = e.target; io.unobserve(i); i._go(); }
+  for (const e of es) if (e.isIntersecting || e.intersectionRatio > 0) { const i = e.target; io.unobserve(i); i._go(); }
 }, { rootMargin: '400px' }) : null;
 /** miss: chamado quando não há imagem (ou nenhuma abriu) e o card está na tela — busca a capa em outro lugar */
 function img(src, cls, alt, miss, alt2) {
@@ -49,7 +49,7 @@ function img(src, cls, alt, miss, alt2) {
   i.onerror = fail;
   // carregou: esconde o nome escrito atrás (logo transparente não mistura com o texto); imagem vazia (1x1) conta como erro
   i.onload = () => { clearTimeout(i._t); if (i.naturalWidth <= 2) return fail(); if (i.parentNode) i.parentNode.classList.add('ok'); };
-  i._go = () => { if (k < q.length) { i.src = q[k++]; arm(); } else if (i._miss) i._miss(); };
+  i._go = () => { if (i._started) return; i._started = true; if (k < q.length) { i.src = q[k++]; arm(); } else if (i._miss) i._miss(); };
   if (!q.length) i.style.visibility = 'hidden';
   if (io) io.observe(i); else i._go();
   return i;
@@ -76,6 +76,14 @@ function card(it, ctx) {
   c.onok = () => open(it, ctx);
   c.onhold = () => { const f = toggleFav(it.key); toast(f ? 'Adicionado aos favoritos' : 'Removido dos favoritos'); };
   return c;
+}
+/** capa achada depois (detalhes/busca): troca no card que já está na tela */
+function refreshCard(it, u) {
+  const c = document.querySelector('#app [data-k="' + CSS_ESC(it.key) + '"] .art');
+  if (!c || c.classList.contains('ok')) return;
+  const o = c.querySelector('img'); if (o) o.remove();
+  c.insertBefore(img(u), c.firstChild);
+  const n = c.querySelector('img'); if (n && n._go) n._go();
 }
 function open(it, ctx) {
   if (it.kind === 'l') { V.focusKey = it.key; play(it, it.eps[0], { list: (ctx && ctx.list) || S.lib.live, back: restoreFocus }); }
@@ -375,15 +383,32 @@ export function showDetail(it) {
     } else renderEps();
     // capa e sinopse
     const k = it.key;
+    const setImg = (u) => {
+      const o = poster.querySelector('img'); if (o) o.remove();
+      poster.appendChild(img(u)); bg.style.backgroundImage = 'url("' + u.replace(/"/g, '%22') + '")';
+      Covers.put(it, u); refreshCard(it, u);
+    };
+    const NOOV = /^(sinopse|descri[cç][aã]o)?\s*(n[aã]o\s+dispon[ií]vel|indispon[ií]vel|n\/a|none|null|-)?\.?$/i;
     const apply = (inf) => {
-      if (!inf) { ov.textContent = ''; return; }
-      if (inf.ov) ov.textContent = inf.ov; else ov.textContent = '';
-      if (inf.img) { const o = poster.querySelector('img'); if (o) o.remove(); poster.appendChild(img(inf.img)); bg.style.backgroundImage = 'url("' + inf.img.replace(/"/g, '%22') + '")'; }
+      inf = inf || {};
+      const sov = inf.ov && !NOOV.test(inf.ov.trim()) ? inf.ov : '';
+      ov.textContent = sov || 'Buscando sinopse…';
+      if (inf.img) setImg(inf.img);
       meta.textContent = [inf.y || yearOf(it.title), inf.r ? 'Nota ' + inf.r.toFixed(1) : '', inf.genre, quality(it.title)].filter(Boolean).join(' · ');
+      if (sov && inf.img) return;
+      // o servidor não tem sinopse/capa: Wikipédia (pt) e, para séries, TVMaze (inglês)
+      Covers.wiki(it).then(async (w) => {
+        if (!document.body.contains(ov)) return;
+        if (!inf.img && w && w.img) setImg(w.img);
+        if (sov) return;
+        let t = w && w.ov ? w.ov : '';
+        if (!t && it.kind === 's') { const e = await Covers.tvmazeSummary(it); if (e) t = e + ' (resumo em inglês)'; }
+        ov.textContent = t || 'Sinopse não disponível.';
+      }).catch(() => { if (!sov) ov.textContent = 'Sinopse não disponível.'; });
     };
     if (it.logo) bg.style.backgroundImage = 'url("' + it.logo.replace(/"/g, '%22') + '")';
     if (infoCache.has(k)) apply(infoCache.get(k));
-    else X.info(it).then((inf) => { infoCache.set(k, inf); if (inf && inf.img) Covers.put(it, inf.img); apply(inf); }).catch(() => apply(null));
+    else X.info(it).then((inf) => { infoCache.set(k, inf); apply(inf); }).catch(() => apply(null));
     first(L);
   });
 }

@@ -12,14 +12,14 @@ let running = 0;
 export const init = () => loadCache();
 async function loadCache() {
   if (cache) return;
-  try { cache = (await Idb.get('cache', 'covers2')) || {}; } catch (e) { cache = {}; }
+  try { cache = (await Idb.get('cache', 'covers3')) || {}; } catch (e) { cache = {}; }
 }
 function save() {
   dirty = true; clearTimeout(saveT);
   saveT = setTimeout(() => {
     const ks = Object.keys(cache);
     if (ks.length > 5000) { ks.sort((a, b) => cache[a].t - cache[b].t); for (const k of ks.slice(0, ks.length - 5000)) delete cache[k]; }
-    Idb.put('cache', 'covers2', cache).catch(() => {}); dirty = false;
+    Idb.put('cache', 'covers3', cache).catch(() => {}); dirty = false;
   }, 3000);
 }
 const DAY = 86400000;
@@ -41,7 +41,7 @@ export function want(it, cb) {
 export function put(it, url) { if (!url || !cache) return; cache[it.key] = { u: url, t: Date.now() }; save(); }
 
 function pump() {
-  while (running < 3 && queue.length) {
+  while (running < 4 && queue.length) {
     const it = queue.pop(); // o último pedido é o que está na tela agora
     running++;
     const st = { net: false };
@@ -56,13 +56,23 @@ function pump() {
   }
 }
 
-const sameT = (a, b) => { const x = norm(a), y = norm(b); if (!x || !y) return false; if (x === y) return true; const wa = x.split(' '); const hit = wa.filter((w) => (' ' + y + ' ').indexOf(' ' + w + ' ') >= 0).length; return hit / wa.length >= 0.85; };
+// títulos iguais nos DOIS sentidos ("A Fera" não pode casar com "A Bela e a Fera"); números precisam bater
+const STOPW = new Set(['a', 'o', 'as', 'os', 'e', 'de', 'do', 'da', 'dos', 'das', 'the', 'of', 'and', 'um', 'uma']);
+function sameT(a, b) {
+  const x = norm(a), y = norm(b); if (!x || !y) return false; if (x === y) return true;
+  const wa = x.split(' ').filter((w) => !STOPW.has(w)), wb = y.split(' ').filter((w) => !STOPW.has(w));
+  if (!wa.length || !wb.length) return false;
+  const inB = wa.filter((w) => wb.indexOf(w) >= 0).length, inA = wb.filter((w) => wa.indexOf(w) >= 0).length;
+  const nums = (l) => l.filter((w) => /^\d+$/.test(w) && w.length < 4).join(',');
+  if (nums(wa) !== nums(wb)) return false;
+  return inB / wa.length >= 0.85 && inA / wb.length >= 0.85;
+}
 
 // confirma que a imagem abre de verdade antes de aceitar (o servidor Xtream às vezes devolve link quebrado)
 function imgOk(u) {
   return new Promise((res) => {
     if (!u) return res(false);
-    const im = new Image(); const t = setTimeout(() => res(false), 10000);
+    const im = new Image(); const t = setTimeout(() => res(false), 8000);
     im.onload = () => { clearTimeout(t); res(im.naturalWidth > 2); };
     im.onerror = () => { clearTimeout(t); res(false); };
     im.src = u;
@@ -94,18 +104,45 @@ async function find2(it, st) {
       }
     }
   }
-  // Wikipédia (pt, depois en): imagem principal do artigo cujo título bate com o nome
+  const w = await wiki(it, st);
+  return w ? w.img : '';
+}
+
+const clean = (it) => cleanT(it.title).replace(/^\d+\s*-\s*/, '').replace(/\s*-\s*\d{4}$/, '')
+  .replace(it.kind === 'l' ? /\b(sd|hd|fhd|uhd|4k|h265|hevc|alt|24h)\b/gi : /$^/, ' ').replace(/\s+/g, ' ').trim();
+const wcache = new Map();
+/** Wikipédia (pt, depois en): capa e resumo do artigo cujo título bate com o nome. {img, ov, lang} ou null */
+export async function wiki(it, st) {
+  const t = clean(it); if (!t) return null;
+  if (wcache.has(it.key)) return wcache.get(it.key);
+  const y = yearOf(it.title);
   const hint = it.kind === 'm' ? ['filme', 'film'] : it.kind === 's' ? ['série', 'series'] : ['canal de televisão', 'tv channel'];
+  let found = null;
   for (const [lang, h] of [['pt', hint[0]], ['en', hint[1]]]) {
-    const txt = await getQuick('https://' + lang + '.wikipedia.org/w/api.php?origin=*&format=json&action=query&generator=search&gsrlimit=5&gsrsearch=' +
-      encodeURIComponent(t + ' ' + (y ? y + ' ' : '') + h) + '&prop=pageimages&piprop=thumbnail&pithumbsize=300');
+    const txt = await getQ('https://' + lang + '.wikipedia.org/w/api.php?origin=*&format=json&action=query&generator=search&gsrlimit=6&gsrsearch=' +
+      encodeURIComponent(t + ' ' + (y ? y + ' ' : '') + h) + '&prop=pageimages|extracts&piprop=thumbnail&pithumbsize=300&exintro=1&explaintext=1&exsentences=4&exlimit=6');
     if (!txt) continue;
+    if (st) st.net = true;
     let pages = [];
-    try { pages = Object.values((JSON.parse(txt).query || {}).pages || {}).sort((a, b) => (a.index || 0) - (b.index || 0)); } catch (e) {}
+    try { const q = JSON.parse(txt).query; pages = q && q.pages ? Object.keys(q.pages).map((k) => q.pages[k]).sort((a, b) => (a.index || 0) - (b.index || 0)) : []; } catch (e) {}
     for (const p of pages) {
       const name = (p.title || '').replace(/\s*\(.*?\)\s*$/, '');
-      if (p.thumbnail && p.thumbnail.source && sameT(t, name)) return p.thumbnail.source;
+      if (!sameT(t, name)) continue;
+      // com ano no nome, o artigo precisa citar o ano (evita o livro, o remake ou outro filme de mesmo nome)
+      if (y && p.extract && !(new RegExp('\\b(' + (+y - 1) + '|' + y + '|' + (+y + 1) + ')\\b')).test(p.extract)) continue;
+      const f = { img: p.thumbnail && p.thumbnail.source ? p.thumbnail.source : '', ov: lang === 'pt' && p.extract ? p.extract.trim() : '', lang };
+      if (!found) found = f; else { if (!found.img) found.img = f.img; if (!found.ov) found.ov = f.ov; }
+      break;
     }
+    if (found && found.img && found.ov) break;
   }
-  return '';
+  wcache.set(it.key, found);
+  return found;
+}
+/** resumo de série pelo TVMaze (em inglês), quando a Wikipédia não tem */
+export async function tvmazeSummary(it) {
+  const t = clean(it); if (!t) return '';
+  const txt = await getQ('https://api.tvmaze.com/singlesearch/shows?q=' + encodeURIComponent(t));
+  if (!txt) return '';
+  try { const s = JSON.parse(txt); if (!sameT(t, s.name || '')) return ''; return (s.summary || '').replace(/<[^>]+>/g, '').trim(); } catch (e) { return ''; }
 }

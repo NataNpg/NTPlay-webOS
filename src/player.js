@@ -106,6 +106,21 @@ function setStatus(t, err) {
   s.textContent = t || ''; s.className = 'pl-status' + (t ? ' on' : '') + (err ? ' err' : '');
 }
 
+// ---------------------------------------------------------------- tamanho da tela (zoom)
+// [nome, object-fit, escala]. A escolha fica guardada e vale para tudo.
+const SCREENS = [['Ajustar (original)', 'contain', 1], ['Preencher a tela (corta as bordas)', 'cover', 1], ['Esticar', 'fill', 1],
+  ['Zoom 110%', 'contain', 1.1], ['Zoom 125%', 'contain', 1.25], ['Zoom 140%', 'contain', 1.4], ['4:3 no centro', '43', 1]];
+const scrMode = () => { const m = Store.prefs.screen; return m >= 0 && m < SCREENS.length ? m : 0; };
+function setScr(i) { const p = Store.prefs; p.screen = i; Store.prefs = p; applyScr(); }
+function applyScr() {
+  if (!P) return;
+  const [, fit, sc] = SCREENS[scrMode()], v = P.v;
+  if (fit === '43') { v.style.objectFit = 'fill'; v.style.width = '1440px'; v.style.left = '240px'; v.style.transform = ''; return; }
+  v.style.width = '1920px'; v.style.left = '0';
+  v.style.objectFit = fit;
+  v.style.transform = sc !== 1 ? 'scale(' + sc + ')' : '';
+}
+
 // ---------------------------------------------------------------- abrir / fechar
 /** item + episódio; ctx.list = lista para trocar de canal/episódio */
 export function play(item, ep, ctx) {
@@ -123,6 +138,7 @@ export function play(item, ep, ctx) {
   v.addEventListener('timeupdate', onTime);
   v.addEventListener('loadedmetadata', tracksChanged);
   P.unkeys = pushKeys(onKey);
+  applyScr();
   if (P.resumeAt) hint('Continuando de ' + fmt(P.resumeAt));
   tryEngine(0, P.resumeAt);
   renderUi(); showUi(true);
@@ -266,13 +282,14 @@ function renderUi() {
     '<div class="pl-btns">' +
     (live ? btn('b-chdn', ic('down') + ' Canal') + btn('b-chup', ic('up') + ' Canal') + btn('b-chs', ic('tv') + ' Canais')
       : btn('b-rw', ic('rw') + ' 10s') + btn('b-pp', ic('playpause'), ' class="autof"') + btn('b-ff', '10s ' + ic('ff')) + (P.item.kind === 's' ? btn('b-next', 'Próximo ' + ic('next')) : '')) +
-    btn('b-aud', ic('audio') + ' Áudio') + btn('b-fav', S.favs.has(P.item.key) ? ic('star') + ' Favorito' : ic('staro') + ' Favoritar') + btn('b-exit', ic('close') + ' Sair') +
+    btn('b-scr', ic('screen') + ' Tela') + btn('b-aud', ic('audio') + ' Áudio') + btn('b-fav', S.favs.has(P.item.key) ? ic('star') + ' Favorito' : ic('staro') + ' Favoritar') + btn('b-exit', ic('close') + ' Sair') +
     '</div></div>' +
     (live ? '' : '<div class="f pbtn pl-skip" id="pl-skip" style="display:none">Pular abertura ' + ic('ff') + '</div><div class="f pbtn pl-nextpop" id="pl-nextpop" style="display:none">Próximo episódio ' + ic('next') + '</div>');
   const on = (id, fn) => { const e = $('#' + id); if (e) e.onok = () => { fn(); showUi(true); }; };
   on('b-rw', () => seek(-10)); on('b-ff', () => seek(10)); on('b-pp', togglePause);
   on('b-next', goNext); on('b-chup', () => zap(1)); on('b-chdn', () => zap(-1));
   on('b-exit', () => close());
+  on('b-scr', () => sidePick('Tamanho da tela', SCREENS.map((m, i) => ({ name: m[0], on: i === scrMode(), i })), (x) => { setScr(x.i); hint(SCREENS[x.i][0]); }));
   on('b-fav', () => { const f = toggleFav(P.item.key); $('#b-fav').innerHTML = f ? ic('star') + ' Favorito' : ic('staro') + ' Favoritar'; hint(f ? 'Adicionado aos favoritos' : 'Removido dos favoritos'); });
   on('b-aud', () => { const l = audioList(); if (l.length < 2) return hint(l.length ? 'Só existe uma faixa de áudio' : 'A TV não informou as faixas de áudio'); sidePick('Áudio', l, (t) => t.set()); });
   on('b-chs', () => {

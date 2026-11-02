@@ -6,7 +6,13 @@ let map = null, loading = null;
 
 function load() {
   if (map) return Promise.resolve(map);
-  if (!loading) loading = fetch('logos.json').then((r) => r.json()).then((m) => { map = m; return m; }).catch(() => { map = {}; return map; });
+  // fetch() não lê arquivo do próprio app (file://) no navegador da TV; XMLHttpRequest lê
+  if (!loading) loading = new Promise((res) => {
+    const x = new XMLHttpRequest();
+    x.onload = () => { try { map = JSON.parse(x.responseText); } catch (e) { map = {}; } res(map); };
+    x.onerror = () => { map = {}; res(map); };
+    x.open('GET', 'logos.json'); x.send();
+  });
   return loading;
 }
 function expand(u) {

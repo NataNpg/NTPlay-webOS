@@ -171,7 +171,8 @@ small { font-size: .78em; color: var(--muted); }
 
 /* ---------- player */
 #player.open { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; background: #000; z-index: 30; }
-#pl-v { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; background: #000; }
+#pl-v { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; background: #000; transform-origin: 50% 50%; }
+#player.open { overflow: hidden; }
 .pl-ui { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; opacity: 0; transition: opacity .25s; pointer-events: none; }
 .pl-ui.on { opacity: 1; pointer-events: auto; }
 .pl-top { position: absolute; left: 0; right: 0; top: 0; padding: 40px 70px 80px; background: linear-gradient(rgba(0,0,0,.85), transparent); }

@@ -8,3 +8,13 @@
   if (typeof Promise !== 'undefined' && !Promise.prototype.finally) Promise.prototype.finally = function (f) { return this.then(function (v) { return Promise.resolve(f()).then(function () { return v; }); }, function (e) { return Promise.resolve(f()).then(function () { throw e; }); }); };
   if (!Array.prototype.flat) Array.prototype.flat = function (d) { d = d === undefined ? 1 : d; return d > 0 ? this.reduce(function (a, v) { return a.concat(Array.isArray(v) ? v.flat(d - 1) : v); }, []) : this.slice(); };
 })();
+// Pacote para TVs Full HD (appinfo "resolution": "1280x720"): a tela do app tem 1280x720, então
+// a interface de 1920x1080 é reduzida inteira para caber (zoom 2/3). Em 1920x1080 nada muda.
+(function () {
+  function fit() {
+    var w = window.innerWidth || 1920;
+    document.documentElement.style.zoom = w > 0 && w < 1900 ? String(w / 1920) : '';
+  }
+  fit();
+  window.addEventListener('resize', fit);
+})();

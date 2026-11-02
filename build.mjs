@@ -11,6 +11,7 @@ cpSync('app', 'dist', { recursive: true });
 
 const info = JSON.parse(readFileSync('app/appinfo.json', 'utf8'));
 info.version = ver;
+if (process.env.RES) info.resolution = process.env.RES; // ex.: RES=1280x720 para o pacote das TVs Full HD
 writeFileSync('dist/appinfo.json', JSON.stringify(info, null, 2));
 
 await build({

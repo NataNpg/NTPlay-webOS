@@ -105,7 +105,7 @@ small { font-size: .78em; color: var(--muted); }
 .ep span { flex: 1; }
 .ep i { font-style: normal; color: var(--muted); font-size: 22px; }
 .pbar { position: absolute; left: 20px; right: 20px; bottom: 4px; height: 4px; background: rgba(255,255,255,.15); }
-.pbar i, .pl-bar i, .epgbar i { display: block; height: 100%; background: var(--purple); }
+.pbar i, .pl-bar i, .epgbar i { display: block; height: 100%; width: 0; background: var(--purple); }
 
 /* ---------- busca */
 .shead { position: absolute; left: 56px; right: 56px; top: 50px; }

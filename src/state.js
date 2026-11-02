@@ -150,7 +150,7 @@ export function continueList() {
 }
 
 // ---------------------------------------------------------------- conta + nuvem
-let syncTimer = null, blockPush = false;
+let syncTimer = null, failed = 0;
 const devName = 'LG webOS TV';
 
 export function initAccess() {
@@ -176,12 +176,23 @@ function accessFailed(r) {
 }
 async function wipeLocal() {
   for (const l of Store.lists()) await Idb.del('lists', l.id).catch(() => {});
-  Store.saveLists([]); S.favs = new Set(); Store.favs = []; Store.groups = {}; S.prog = {}; Store.prog = {};
+  Store.saveLists([]); Store.pending = []; S.favs = new Set(); Store.favs = []; Store.groups = {}; S.prog = {}; Store.prog = {};
   await reload();
 }
 
+const failMsg = () => '☁ Salvo. ' + Store.pending.length + ' lista(s) da nuvem não baixaram nesta TV (veja abaixo).';
+export async function retryPending(url) {
+  const p = Store.pending.find((x) => x.url === url); if (!p) return;
+  const ok = await addUrl(p.url, p.name, false);
+  if (ok) Store.pending = Store.pending.filter((x) => x.url !== url);
+  else { const l = Store.pending; const e = l.find((x) => x.url === url); if (e) { e.tried = Date.now(); e.err = S.lastErr; } Store.pending = l; }
+  S.emit('acct');
+}
+export function dropPending(url) { Store.pending = Store.pending.filter((x) => x.url !== url); syncSoon(); S.emit('acct'); }
 function payload(withTs) {
-  const lists = Store.lists().filter((l) => l.url).sort((a, b) => (a.url < b.url ? -1 : a.url > b.url ? 1 : 0)).map((m) => ({ name: m.name, url: m.url, active: m.active }));
+  const loc = Store.lists().filter((l) => l.url);
+  const all = loc.concat(Store.pending.filter((p) => !loc.some((l) => l.url === p.url)));
+  const lists = all.sort((a, b) => (a.url < b.url ? -1 : a.url > b.url ? 1 : 0)).map((m) => ({ name: m.name, url: m.url, active: m.active }));
   const favs = Array.from(S.favs).sort();
   const groups = Store.groups;
   const prog = {};
@@ -210,21 +221,35 @@ async function applyRemote(r, merge) {
     Store.prog = S.prog;
   }
   const remoteUrls = new Set();
+  let pend = Store.pending;
   for (const x of r.lists || []) {
     remoteUrls.add(x.url);
     const have = Store.lists().find((l) => l.url === x.url);
     if (!have) {
+      const pe = pend.find((p) => p.url === x.url);
+      if (pe) { pe.name = x.name; pe.active = x.active !== false; }
+      // lista que já falhou: só tenta de novo a cada 30 min (antes tentava a cada 90 s e travava a sincronização)
+      if (pe && Date.now() - (pe.tried || 0) < 30 * 60000) continue;
       S.syncMsg = 'Baixando a lista "' + (x.name || '') + '" da nuvem…'; S.emit('sync');
       const ok = await addUrl(x.url, x.name, true);
-      if (!ok) blockPush = true;
-      else if (x.active === false) { const ls = Store.lists(); const y = ls.find((l) => l.url === x.url); if (y) { y.active = false; Store.saveLists(ls); } }
-    } else if (have.active !== (x.active !== false)) {
+      pend = Store.pending;
+      if (!ok) {
+        const e = pend.find((p) => p.url === x.url);
+        if (e) { e.tried = Date.now(); e.err = S.lastErr; } else pend.push({ name: x.name, url: x.url, active: x.active !== false, tried: Date.now(), err: S.lastErr });
+        Store.pending = pend; failed++;
+      } else {
+        pend = pend.filter((p) => p.url !== x.url); Store.pending = pend;
+        if (x.active === false) { const ls = Store.lists(); const y = ls.find((l) => l.url === x.url); if (y) { y.active = false; Store.saveLists(ls); } }
+      }
+    } else if (!merge && have.active !== (x.active !== false)) {
+      // só segue a nuvem quando nada mudou aqui; se você ligou/desligou nesta TV, vale o que fez aqui
       const ls = Store.lists(); ls.find((l) => l.id === have.id).active = x.active !== false; Store.saveLists(ls);
     }
   }
   if (!merge && r.lists) {
     const ls = Store.lists(); const rm = ls.filter((l) => l.url && !remoteUrls.has(l.url));
     if (rm.length) { Store.saveLists(ls.filter((l) => rm.indexOf(l) < 0)); for (const m of rm) await Idb.del('lists', m.id).catch(() => {}); }
+    Store.pending = Store.pending.filter((p) => remoteUrls.has(p.url));
   }
   await reload();
   S.emit('favs');
@@ -232,7 +257,7 @@ async function applyRemote(r, merge) {
 
 export async function syncNow(manual) {
   const a = Store.acct; if (!a.user || S.syncBusy) return;
-  S.syncBusy = true; blockPush = false; S.emit('sync');
+  S.syncBusy = true; failed = 0; S.emit('sync');
   try {
     const dev = Store.deviceId;
     const g = await Sync.call('get', a.user, a.auth, dev, devName);
@@ -244,15 +269,14 @@ export async function syncNow(manual) {
     const changed = (await hashOf(payload(0))) !== Store.acct.hash;
     if (remote && g.ts > Store.acct.ts) {
       await applyRemote(remote, changed);
-      if (blockPush) { S.syncMsg = 'Algumas listas da nuvem não baixaram; vou tentar de novo.'; return; }
-      if (!changed) { const b = Store.acct; b.ts = g.ts; b.hash = await hashOf(payload(0)); Store.acct = b; S.syncMsg = '☁ Atualizado da nuvem.'; return; }
+      if (!changed) { const b = Store.acct; b.ts = g.ts; b.hash = await hashOf(payload(0)); Store.acct = b; S.syncMsg = failed ? failMsg() : '☁ Atualizado da nuvem.'; return; }
     } else if (!changed && remote) { if (manual) S.syncMsg = '☁ Tudo em dia.'; return; }
     const now = Date.now();
     const p = payload(now);
     const encd = await Sync.encrypt(JSON.stringify(p), a.enc);
     const pr = await Sync.call('put', a.user, a.auth, dev, devName, encd, now);
     if (accessFailed(pr)) return;
-    if (pr.ok) { const b = Store.acct; b.ts = now; b.hash = await hashOf(p); Store.acct = b; S.syncMsg = '☁ Salvo na nuvem.'; } else S.syncMsg = pr.msg;
+    if (pr.ok) { const b = Store.acct; b.ts = now; b.hash = await hashOf(p); Store.acct = b; S.syncMsg = failed || Store.pending.length ? failMsg() : '☁ Salvo na nuvem.'; } else S.syncMsg = pr.msg;
   } catch (e) { S.syncMsg = 'Falha ao sincronizar: ' + (e.message || e); }
   finally { S.syncBusy = false; S.emit('sync'); }
 }

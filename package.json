@@ -1,6 +1,6 @@
 {
   "name": "ntplay-webos",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "NTPlay para TVs LG (webOS)",
   "scripts": {
     "build": "node build.mjs",

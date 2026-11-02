@@ -19,7 +19,15 @@ function engines(url, live) {
     if (u.endsWith('.ts')) { const h = url.replace(/\.ts(\?|$)/i, '.m3u8$1'); out.push(['native', h]); if (hasMse && window.Hls && Hls.isSupported()) out.push(['hls', h]); }
   } else {
     out.push(['native', url]);
-    if (hasMse && window.Hls && Hls.isSupported() && /m3u8/i.test(u)) out.push(['hls', url]);
+    // filme/episódio de servidor Xtream: o mesmo id costuma existir em outros formatos.
+    // Quando o arquivo é MKV/AVI ou o áudio é AC3, o .m3u8/.ts do servidor ainda pode tocar.
+    const x = /^(https?:\/\/[^/]+\/(?:movie|series)\/[^/]+\/[^/]+\/\d+)\.([a-z0-9]+)(\?.*)?$/i.exec(url);
+    if (x && x[2].toLowerCase() !== 'xs') {
+      const ext = x[2].toLowerCase(), q = x[3] || '';
+      if (ext !== 'm3u8') { out.push(['native', x[1] + '.m3u8' + q]); if (hasMse && window.Hls && Hls.isSupported()) out.push(['hls', x[1] + '.m3u8' + q]); }
+      if (ext !== 'mp4') out.push(['native', x[1] + '.mp4' + q]);
+      if (ext !== 'ts' && hasMse && window.mpegts) out.push(['mpegtsvod', x[1] + '.ts' + q]);
+    } else if (hasMse && window.Hls && Hls.isSupported() && /m3u8/i.test(u)) out.push(['hls', url]);
   }
   return out;
 }
@@ -48,12 +56,12 @@ function tryEngine(i, startAt) {
     P.hls = h; h.loadSource(url); h.attachMedia(v);
     h.on(Hls.Events.ERROR, (e, d) => { if (d.fatal) next('hls: ' + d.details); });
     h.on(Hls.Events.MANIFEST_PARSED, () => { tracksChanged(); });
-  } else if (kind === 'mpegts') {
-    const p = mpegts.createPlayer({ type: 'mpegts', isLive: true, url }, { enableWorker: false, lazyLoad: false, liveBufferLatencyChasing: false, autoCleanupSourceBuffer: true, fixAudioTimestampGap: true });
+  } else if (kind === 'mpegts' || kind === 'mpegtsvod') {
+    const p = mpegts.createPlayer({ type: 'mpegts', isLive: kind === 'mpegts', url }, { enableWorker: false, lazyLoad: false, liveBufferLatencyChasing: false, autoCleanupSourceBuffer: true, fixAudioTimestampGap: true });
     P.mp = p; p.attachMediaElement(v); p.load();
     p.on(mpegts.Events.ERROR, (t, d) => { if (P && P.started) reconnect('mpegts: ' + d); else next('mpegts: ' + d); });
     // servidor que entrega o canal em pedaços e fecha a conexão: reconecta na hora
-    p.on(mpegts.Events.LOADING_COMPLETE, () => { if (P && P.live) reconnect('fim do pedaço'); });
+    p.on(mpegts.Events.LOADING_COMPLETE, () => { if (P && P.live && kind === 'mpegts') reconnect('fim do pedaço'); });
   }
   if (startAt > 0) {
     const seek = () => { v.removeEventListener('loadedmetadata', seek); try { v.currentTime = startAt / 1000; } catch (e) {} };
@@ -62,9 +70,11 @@ function tryEngine(i, startAt) {
   const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
   P.watch = setTimeout(() => { if (P && !P.started) next('sem imagem em ' + (P.live ? 15 : 30) + ' s'); }, P.live ? 15000 : 30000);
 }
+const ERR = { 1: 'interrompido', 2: 'erro de rede/servidor', 3: 'erro ao decodificar', 4: 'formato não suportado ou servidor recusou' };
 function next(why) {
   if (!P) return;
-  P.why.push(P.eng[P.ei][0] + ': ' + why);
+  const e = P.eng[P.ei]; const ex = (e[1].split('?')[0].match(/\.([a-z0-9]+)$/i) || [0, ''])[1];
+  P.why.push(e[0].replace('mpegtsvod', 'mpegts') + (ex ? ' .' + ex : '') + ': ' + why);
   tryEngine(P.ei + 1, P.resumeAt);
 }
 function reconnect(why) {
@@ -76,8 +86,14 @@ function reconnect(why) {
 function fail() {
   if (!P) return;
   stopEngine();
-  const why = P.why.slice(-3).join(' · ');
-  setStatus('Não foi possível reproduzir.' + (P.live ? ' O canal pode estar fora do ar ou a conta da lista já está em uso em outra tela.' : ' O formato pode não ser suportado por esta TV.') + (why ? '\n' + why : ''), true);
+  const why = P.why.join('\n');
+  const ext = (P.ep.url.split('?')[0].match(/\.([a-z0-9]+)$/i) || [0, '?'])[1].toUpperCase();
+  const sim = /Simulator|Electron/i.test(navigator.userAgent) || !(window.PalmSystem || window.webOSSystem);
+  setStatus('Não foi possível reproduzir (arquivo ' + ext + ').' +
+    (P.live ? ' O canal pode estar fora do ar ou a conta da lista já está em uso em outra tela.'
+      : sim ? ' Você está no simulador/PC: ele não tem os decodificadores da TV LG (MKV, H.265, AC3/Dolby). Teste na TV.'
+        : ' Esta TV não decodifica este arquivo (codec ou áudio), ou o servidor recusou o acesso.') +
+    (why ? '\n' + why : ''), true);
   showUi(true);
 }
 function setStatus(t, err) {
@@ -97,7 +113,7 @@ export function play(item, ep, ctx) {
   P = { item, ep, ctx: ctx || {}, v, live, eng: engines(ep.url, live), ei: 0, why: [], retries: 0, resumeAt: live ? 0 : resumeOf(ep), uiT: null, epg: [], hideAt: 0 };
   v.addEventListener('playing', () => { if (!P) return; P.started = true; P.retries = 0; clearTimeout(P.watch); setStatus(''); renderInfo(); });
   v.addEventListener('waiting', () => { if (P && P.started) setStatus('Carregando…'); });
-  v.addEventListener('error', () => { if (!P) return; if (P.started && P.live) reconnect('erro de vídeo'); else if (!P.mp && !P.hls) next('erro ' + (v.error ? v.error.code : '')); });
+  v.addEventListener('error', () => { if (!P) return; if (P.started && P.live) reconnect('erro de vídeo'); else if (!P.mp && !P.hls) next(v.error ? ERR[v.error.code] || 'erro ' + v.error.code : 'erro'); });
   v.addEventListener('ended', () => { if (!P) return; if (P.live) reconnect('fim'); else onEnded(); });
   v.addEventListener('timeupdate', onTime);
   v.addEventListener('loadedmetadata', tracksChanged);

@@ -1,6 +1,6 @@
 // Interface para TV (1920x1080, controle remoto). Telas: entrada, navegação, detalhes, busca, listas, futebol.
 import { S, reload, addUrl, addXtream, refreshList, deleteList, toggleList, loadAccounts, toggleFav, groups, groupAdd, groupDelete,
-  continueList, removeProg, login, logout, accessText, syncNow } from './state.js';
+  continueList, removeProg, login, logout, accessText, syncNow, retryPending, dropPending } from './state.js';
 import { Store } from './store.js';
 import { focus, first, pushKeys, K, current } from './nav.js';
 import { esc, yearOf, quality, audioTag, animeSrc, cleanT, fmt, hhmm, norm } from './util.js';
@@ -497,6 +497,13 @@ function showLists() {
         const u = h('div', 'f btn sm', '↻ Atualizar'); u.id = 'l-u-' + l.id; u.onok = () => refreshList(l.id);
         const d = h('div', 'f btn sm danger', 'Excluir'); d.onok = () => confirmBox('Excluir a lista "' + l.name + '"?', async () => { await deleteList(l.id); render(); });
         bt.appendChild(t); bt.appendChild(u); bt.appendChild(d); row.appendChild(bt); pl.appendChild(row);
+      }
+      for (const pd of Store.pending) {
+        const row = h('div', 'lrow', '<div><b>' + esc(pd.name || 'Lista') + '</b> <span class="badge red">não baixou nesta TV</span><br><small class="muted">' + esc((pd.err || '').slice(0, 140)) + '</small></div>');
+        const bt = h('div', 'lbtns');
+        const t = h('div', 'f btn sm', '↻ Tentar de novo'); t.onok = async () => { await retryPending(pd.url); render(); };
+        const d = h('div', 'f btn sm danger', 'Excluir'); d.onok = () => confirmBox('Excluir "' + (pd.name || 'lista') + '"? Ela some da nuvem e da TV Android também.', () => { dropPending(pd.url); render(); });
+        bt.appendChild(t); bt.appendChild(d); row.appendChild(bt); pl.appendChild(row);
       }
       sc.appendChild(pl);
       // adicionar

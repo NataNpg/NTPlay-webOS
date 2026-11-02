@@ -13,6 +13,8 @@ export const Store = {
   get favs() { return get('favs', []); }, set favs(v) { set('favs', v); },
   get groups() { return get('groups', {}); }, set groups(v) { set('groups', v); },
   get prog() { return get('prog', {}); }, set prog(v) { set('prog', v); },
+  // listas da nuvem que não baixaram aqui: continuam na nuvem (não somem da TV Android) e são tentadas de novo
+  get pending() { return get('pending', []); }, set pending(v) { set('pending', v); },
   get intro() { return get('intro', {}); }, set intro(v) { set('intro', v); },
   get prefs() { return Object.assign({ adult: false, autoNext: true, subs: false, skipIntro: 85, autoUpd: 0, updOpen: false }, get('prefs', {})); },
   set prefs(v) { set('prefs', v); },

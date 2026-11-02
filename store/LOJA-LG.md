@@ -23,7 +23,7 @@ Roteiro do que preencher no **LG Seller Lounge** (https://seller.lgappstv.com). 
 | Pacote | `NTPlay-webOS.ipk` (release `webos-latest`) | id `com.natanael.ntplay` |
 | Ícone da loja | `store/icon-400.png` | 400x400, PNG/JPG, sem transparência, sem degradê no fundo |
 | Cor do bloco | `#070C1E` | igual ao fundo do ícone (já está no `appinfo.json`) |
-| Abertura | `app/img/splash.jpg` | 1920x1080, sem transparência |
+| Abertura | `app/img/splash.png` | PNG 1920x1080 (JPG é recusado: "Wrong splashBackground file format") |
 | Ícones no pacote | `app/img/icon80.png`, `icon130.png` | já sem transparência |
 | Checklist | formulário oficial do Seller Lounge | obrigatório; preencher com resultado real |
 | Cenário de UX | modelo do Seller Lounge | texto da seção 4 abaixo |

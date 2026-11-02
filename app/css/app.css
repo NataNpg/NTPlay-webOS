@@ -7,6 +7,9 @@
 html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); color: var(--txt);
   font-family: 'LG Smart UI', 'Museo Sans', Roboto, Arial, sans-serif; font-size: 26px; }
 img { display: block; }
+.ic { width: 1.05em; height: 1.05em; vertical-align: -0.18em; display: inline-block; flex: none; }
+.star .ic { width: 28px; height: 28px; }
+.mini .ic { width: 20px; height: 20px; vertical-align: -3px; }
 .muted { color: var(--muted); }
 .err { color: var(--red); margin-top: 16px; min-height: 34px; white-space: pre-line; }
 small { font-size: .78em; color: var(--muted); }
@@ -39,7 +42,8 @@ small { font-size: .78em; color: var(--muted); }
 .body { position: absolute; left: 0; top: 120px; right: 0; bottom: 0; }
 .scroll { overflow: hidden; }
 .busy { padding: 20px 56px; color: var(--cyan); }
-.busy:before { content: '⏳ '; }
+.busy:before { content: ''; display: inline-block; width: 18px; height: 18px; margin-right: 12px; vertical-align: -2px; border: 3px solid rgba(60,224,230,.35); border-top-color: var(--cyan); border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .empty { padding: 60px; color: var(--muted); font-size: 30px; }
 .welcome { padding: 160px; text-align: center; }
 .welcome h1 { font-size: 56px; margin-bottom: 20px; }
@@ -123,7 +127,7 @@ small { font-size: .78em; color: var(--muted); }
 .plist { max-height: 760px; }
 .row { padding: 14px 20px; border-radius: 10px; margin-bottom: 4px; }
 .row.on { color: var(--cyan); }
-.row.on:before { content: '● '; }
+.row.on:before { content: ''; display: inline-block; width: 12px; height: 12px; border-radius: 6px; background: currentColor; margin-right: 12px; vertical-align: 2px; }
 .lists { position: absolute; left: 40px; right: 40px; top: 30px; bottom: 30px; }
 .panel { background: var(--panel); border-radius: 16px; padding: 22px 26px 12px; margin-bottom: 18px; }
 .panel h2 { font-size: 30px; }

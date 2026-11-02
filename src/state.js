@@ -1,6 +1,6 @@
 // Estado do app: listas, biblioteca, favoritos, grupos, progresso e conta na nuvem.
 // A lógica de sincronização é a mesma do AppState.kt para os dados casarem com a TV Android.
-import { Store, Idb } from './store.js';
+import { Store, Idb, Lists } from './store.js';
 import { Library } from './library.js';
 import * as X from './xtream.js';
 import * as Sync from './sync.js';
@@ -23,11 +23,16 @@ const toast = (m) => S.emit({ toast: m });
 
 // ---------------------------------------------------------------- biblioteca
 export async function reload() {
-  const texts = [];
+  const texts = [], missing = [];
   for (const l of Store.lists()) {
     if (!l.active) continue;
-    const t = await Idb.get('lists', l.id).catch(() => null);
-    if (t) texts.push({ id: l.id, text: t });
+    const t = await Lists.get(l.id);
+    if (t) texts.push({ id: l.id, text: t }); else if (l.url) missing.push(l.id);
+  }
+  // lista que não coube no armazenamento (ou se perdeu): baixa de novo, uma por vez, sem travar a abertura
+  if (missing.length && !reload.fetching) {
+    reload.fetching = true;
+    setTimeout(async () => { for (const id of missing) await refreshList(id, true); reload.fetching = false; }, 500);
   }
   const p = Store.prefs;
   const lib = Library.build(texts, { adult: p.adult, b64: p.b64, adultByName: p.adultByName !== false });
@@ -59,7 +64,7 @@ export async function addUrl(url, name, silent) {
     const text = await download(u, (m) => { S.status = m; S.emit('busy'); });
     if (text.indexOf('#EXTINF') < 0 && text.indexOf('http') < 0) throw new Error('o link não devolveu uma lista M3U');
     const id = 'l' + Date.now().toString(36);
-    await Idb.put('lists', id, text);
+    if (!(await Lists.put(id, text))) toast('A lista é grande demais para guardar nesta TV: ela funciona agora, mas será baixada de novo quando o app abrir.');
     const nm = name || (X.creds(u) ? X.creds(u).user : (u.replace(/^https?:\/\//, '').split('/')[0]));
     const l = Store.lists(); l.push({ id, name: nm, url: u, active: true, ts: Date.now() }); Store.saveLists(l);
     await reload();
@@ -81,21 +86,21 @@ export function addXtream(server, user, pass, name) {
   return addUrl(h + '/get.php?username=' + encodeURIComponent(user.trim()).replace(/%20/g, '+') + '&password=' + encodeURIComponent(pass.trim()).replace(/%20/g, '+') + '&type=m3u_plus&output=ts', name || user.trim());
 }
 
-export async function refreshList(id) {
+export async function refreshList(id, quiet) {
   const l = Store.lists().find((x) => x.id === id);
   if (!l || !l.url) return;
   S.busy = true; S.emit('busy');
   try {
     const t = await download(l.url, (m) => { S.status = m; S.emit('busy'); });
-    await Idb.put('lists', id, t);
+    await Lists.put(id, t);
     const ls = Store.lists(); const x = ls.find((y) => y.id === id); if (x) x.ts = Date.now(); Store.saveLists(ls);
-    await reload(); toast('Lista atualizada.');
+    await reload(); if (!quiet) toast('Lista atualizada.');
   } catch (e) { toast('Falha ao atualizar: ' + (e.message || e)); }
   finally { S.busy = false; S.status = ''; S.emit('busy'); }
 }
 export async function deleteList(id) {
   Store.saveLists(Store.lists().filter((x) => x.id !== id));
-  await Idb.del('lists', id).catch(() => {});
+  await Lists.del(id);
   await reload(); syncSoon();
 }
 export async function toggleList(id) {
@@ -179,12 +184,12 @@ function accessFailed(r) {
   return false;
 }
 async function wipeLocal() {
-  for (const l of Store.lists()) await Idb.del('lists', l.id).catch(() => {});
+  for (const l of Store.lists()) await Lists.del(l.id);
   Store.saveLists([]); Store.pending = []; S.favs = new Set(); Store.favs = []; Store.groups = {}; S.prog = {}; Store.prog = {};
   await reload();
 }
 
-const failMsg = () => '☁ Salvo. ' + Store.pending.length + ' lista(s) da nuvem não baixaram nesta TV (veja abaixo).';
+const failMsg = () => 'Salvo. ' + Store.pending.length + ' lista(s) da nuvem não baixaram nesta TV (veja abaixo).';
 export async function retryPending(url) {
   const p = Store.pending.find((x) => x.url === url); if (!p) return;
   const ok = await addUrl(p.url, p.name, false);
@@ -252,7 +257,7 @@ async function applyRemote(r, merge) {
   }
   if (!merge && r.lists) {
     const ls = Store.lists(); const rm = ls.filter((l) => l.url && !remoteUrls.has(l.url));
-    if (rm.length) { Store.saveLists(ls.filter((l) => rm.indexOf(l) < 0)); for (const m of rm) await Idb.del('lists', m.id).catch(() => {}); }
+    if (rm.length) { Store.saveLists(ls.filter((l) => rm.indexOf(l) < 0)); for (const m of rm) await Lists.del(m.id); }
     Store.pending = Store.pending.filter((p) => remoteUrls.has(p.url));
   }
   await reload();
@@ -273,14 +278,14 @@ export async function syncNow(manual) {
     const changed = (await hashOf(payload(0))) !== Store.acct.hash;
     if (remote && g.ts > Store.acct.ts) {
       await applyRemote(remote, changed);
-      if (!changed) { const b = Store.acct; b.ts = g.ts; b.hash = await hashOf(payload(0)); Store.acct = b; S.syncMsg = failed ? failMsg() : '☁ Atualizado da nuvem.'; return; }
-    } else if (!changed && remote) { if (manual) S.syncMsg = '☁ Tudo em dia.'; return; }
+      if (!changed) { const b = Store.acct; b.ts = g.ts; b.hash = await hashOf(payload(0)); Store.acct = b; S.syncMsg = failed ? failMsg() : 'Atualizado da nuvem.'; return; }
+    } else if (!changed && remote) { if (manual) S.syncMsg = 'Tudo em dia.'; return; }
     const now = Date.now();
     const p = payload(now);
     const encd = await Sync.encrypt(JSON.stringify(p), a.enc);
     const pr = await Sync.call('put', a.user, a.auth, dev, devName, encd, now);
     if (accessFailed(pr)) return;
-    if (pr.ok) { const b = Store.acct; b.ts = now; b.hash = await hashOf(p); Store.acct = b; S.syncMsg = failed || Store.pending.length ? failMsg() : '☁ Salvo na nuvem.'; } else S.syncMsg = pr.msg;
+    if (pr.ok) { const b = Store.acct; b.ts = now; b.hash = await hashOf(p); Store.acct = b; S.syncMsg = failed || Store.pending.length ? failMsg() : 'Salvo na nuvem.'; } else S.syncMsg = pr.msg;
   } catch (e) { S.syncMsg = 'Falha ao sincronizar: ' + (e.message || e); }
   finally { S.syncBusy = false; S.emit('sync'); }
 }

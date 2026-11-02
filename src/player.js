@@ -3,6 +3,7 @@ import { S, saveProg, resumeOf, toggleFav } from './state.js';
 import { Store } from './store.js';
 import { focus, first, pushKeys, K, current } from './nav.js';
 import { esc, fmt, hhmm } from './util.js';
+import { ic } from './icons.js';
 import * as X from './xtream.js';
 
 let P = null; // sessão atual
@@ -16,7 +17,7 @@ function engines(url, live) {
   else if (live) {
     // TV LG de verdade: o player nativo do webOS toca TS com o decodificador da TV e mantém áudio e vídeo juntos.
     // O mpegts.js (JavaScript) fica de reserva — é ele que roda no simulador/PC e pode atrasar o áudio.
-    const onTv = !!(window.PalmSystem || window.webOSSystem) && !/Simulator/i.test(navigator.userAgent);
+    const onTv = !!(window.PalmSystem || window.webOSSystem || /Web0S|webOS/i.test(navigator.userAgent)) && !/Simulator|Electron/i.test(navigator.userAgent);
     if (onTv) out.push(['native', url]);
     if (hasMse && window.mpegts && mpegts.getFeatureList().mseLivePlayback) out.push(['mpegts', url]);
     if (!onTv) out.push(['native', url]);
@@ -63,7 +64,7 @@ function tryEngine(i, startAt) {
   } else if (kind === 'mpegts' || kind === 'mpegtsvod') {
     const p = mpegts.createPlayer({ type: 'mpegts', isLive: kind === 'mpegts', url }, { enableWorker: false, lazyLoad: false, liveBufferLatencyChasing: false, autoCleanupSourceBuffer: true, fixAudioTimestampGap: false, accurateSeek: true });
     P.mp = p; p.attachMediaElement(v); p.load();
-    p.on(mpegts.Events.ERROR, (t, d) => { if (P && P.started) reconnect('mpegts: ' + d); else next('mpegts: ' + d); });
+    p.on(mpegts.Events.ERROR, (t, d, info) => { if (info && info.code) d = d + ' ' + info.code + (info.code == 403 || info.code == 401 ? ' (servidor recusou: conta em uso ou bloqueada)' : info.code == 404 ? ' (canal fora do ar)' : ''); if (P && P.started) reconnect('mpegts: ' + d); else next('mpegts: ' + d); });
     // servidor que entrega o canal em pedaços e fecha a conexão: reconecta na hora
     p.on(mpegts.Events.LOADING_COMPLETE, () => { if (P && P.live && kind === 'mpegts') reconnect('fim do pedaço'); });
   }
@@ -263,18 +264,17 @@ function renderUi() {
     '<div class="pl-bottom">' +
     (live ? '' : '<div class="pl-prog"><div id="pl-bar" class="pl-bar f" tabindex="-1"><i></i></div><span id="pl-time"></span></div>') +
     '<div class="pl-btns">' +
-    (live ? btn('b-chdn', '▼ Canal') + btn('b-chup', '▲ Canal') + btn('b-chs', '📺 Canais')
-      : btn('b-rw', '⏪ 10s') + btn('b-pp', '⏯', ' class="autof"') + btn('b-ff', '10s ⏩') + (P.item.kind === 's' ? btn('b-next', 'Próximo ⏭') : '')) +
-    btn('b-sub', 'CC Legenda') + btn('b-aud', '🔊 Áudio') + btn('b-fav', S.favs.has(P.item.key) ? '★ Favorito' : '☆ Favoritar') + btn('b-exit', '✕ Sair') +
+    (live ? btn('b-chdn', ic('down') + ' Canal') + btn('b-chup', ic('up') + ' Canal') + btn('b-chs', ic('tv') + ' Canais')
+      : btn('b-rw', ic('rw') + ' 10s') + btn('b-pp', ic('playpause'), ' class="autof"') + btn('b-ff', '10s ' + ic('ff')) + (P.item.kind === 's' ? btn('b-next', 'Próximo ' + ic('next')) : '')) +
+    btn('b-aud', ic('audio') + ' Áudio') + btn('b-fav', S.favs.has(P.item.key) ? ic('star') + ' Favorito' : ic('staro') + ' Favoritar') + btn('b-exit', ic('close') + ' Sair') +
     '</div></div>' +
-    (live ? '' : '<div class="f pbtn pl-skip" id="pl-skip" style="display:none">Pular abertura ⏩</div><div class="f pbtn pl-nextpop" id="pl-nextpop" style="display:none">Próximo episódio ⏭</div>');
+    (live ? '' : '<div class="f pbtn pl-skip" id="pl-skip" style="display:none">Pular abertura ' + ic('ff') + '</div><div class="f pbtn pl-nextpop" id="pl-nextpop" style="display:none">Próximo episódio ' + ic('next') + '</div>');
   const on = (id, fn) => { const e = $('#' + id); if (e) e.onok = () => { fn(); showUi(true); }; };
   on('b-rw', () => seek(-10)); on('b-ff', () => seek(10)); on('b-pp', togglePause);
   on('b-next', goNext); on('b-chup', () => zap(1)); on('b-chdn', () => zap(-1));
   on('b-exit', () => close());
-  on('b-fav', () => { const f = toggleFav(P.item.key); $('#b-fav').textContent = f ? '★ Favorito' : '☆ Favoritar'; hint(f ? 'Adicionado aos favoritos' : 'Removido dos favoritos'); });
+  on('b-fav', () => { const f = toggleFav(P.item.key); $('#b-fav').innerHTML = f ? ic('star') + ' Favorito' : ic('staro') + ' Favoritar'; hint(f ? 'Adicionado aos favoritos' : 'Removido dos favoritos'); });
   on('b-aud', () => { const l = audioList(); if (l.length < 2) return hint(l.length ? 'Só existe uma faixa de áudio' : 'A TV não informou as faixas de áudio'); sidePick('Áudio', l, (t) => t.set()); });
-  on('b-sub', () => { const l = subList(); if (l.length < 2) return hint('Sem legendas neste vídeo'); sidePick('Legenda', l, (t) => t.set()); });
   on('b-chs', () => {
     const list = (P.ctx.list || []).slice(0, 400);
     sidePick('Canais', list.map((it) => ({ name: it.title, on: it === P.item, it })), (x) => play(x.it, x.it.eps[0], P.ctx));
@@ -328,7 +328,7 @@ function seek(s) {
   v.currentTime = Math.max(0, Math.min(v.duration - 1, v.currentTime + s));
   onTime();
 }
-function togglePause() { const v = P.v; if (v.paused) { const p = v.play(); if (p && p.catch) p.catch(() => {}); hint('▶'); } else { v.pause(); hint('⏸'); } }
+function togglePause() { const v = P.v; if (v.paused) { const p = v.play(); if (p && p.catch) p.catch(() => {}); hint('Reproduzindo'); } else { v.pause(); hint('Pausado'); } }
 function hint(t) {
   const h = $('#pl-hint'); if (!h) return;
   h.textContent = t; h.classList.add('on');

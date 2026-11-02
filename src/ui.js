@@ -8,6 +8,7 @@ import * as X from './xtream.js';
 import * as F from './futebol.js';
 import { play, isOpen, close as closePlayer } from './player.js';
 import * as Covers from './covers.js';
+import { ic } from './icons.js';
 
 const $ = (s, r) => (r || document).querySelector(s);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -68,12 +69,12 @@ function card(it, ctx) {
   const ph = h('div', 'ph', esc(cleanT(it.title)));
   art.appendChild(ph);
   if (!live) { const t = audioTag(it); if (t) art.appendChild(h('span', 'tag ' + t.toLowerCase(), t)); }
-  if (S.favs.has(it.key)) art.appendChild(h('span', 'star', '★'));
+  if (S.favs.has(it.key)) art.appendChild(h('span', 'star', ic('star')));
   c.appendChild(art);
   const y = yearOf(it.title), q = quality(it.title);
   c.appendChild(h('div', 'cap', '<b>' + esc(cleanT(it.title) || it.title) + '</b><small>' + esc([y, q, it.kind === 's' && it.eps.length > 1 ? it.eps.length + ' ep.' : ''].filter(Boolean).join(' · ')) + '</small>'));
   c.onok = () => open(it, ctx);
-  c.onhold = () => { const f = toggleFav(it.key); toast(f ? '★ Adicionado aos favoritos' : 'Removido dos favoritos'); };
+  c.onhold = () => { const f = toggleFav(it.key); toast(f ? 'Adicionado aos favoritos' : 'Removido dos favoritos'); };
   return c;
 }
 function open(it, ctx) {
@@ -129,8 +130,8 @@ export function renderApp() {
   });
   top.appendChild(tabs);
   const act = h('div', 'acts');
-  const bs = h('div', 'f btn', '🔍 Buscar'); bs.onok = showSearch; act.appendChild(bs);
-  const bl = h('div', 'f btn', '☰ Listas'); bl.onok = showLists; act.appendChild(bl);
+  const bs = h('div', 'f btn', ic('search') + ' Buscar'); bs.onok = showSearch; act.appendChild(bs);
+  const bl = h('div', 'f btn', ic('menu') + ' Listas'); bl.onok = showLists; act.appendChild(bl);
   top.appendChild(act);
   app.appendChild(top);
   const body = h('div', 'body');
@@ -138,7 +139,7 @@ export function renderApp() {
   if (S.busy) body.appendChild(h('div', 'busy', esc(S.status || 'Carregando…')));
   if (!Store.lists().length && !S.busy) {
     const w = h('div', 'welcome', '<h1>Bem-vindo ao NTPlay</h1><p>Adicione sua lista (link M3U ou Xtream Codes) para começar.</p>');
-    const b = h('div', 'f btn big autof', '☰ Adicionar lista'); b.onok = showLists; w.appendChild(b);
+    const b = h('div', 'f btn big autof', ic('menu') + ' Adicionar lista'); b.onok = showLists; w.appendChild(b);
     body.appendChild(w); return;
   }
   ({ rec: renderRec, live: () => renderBrowse('live'), movies: () => renderBrowse('movies'), series: () => renderBrowse('series'),
@@ -150,7 +151,7 @@ function renderRec(body) {
   const lib = S.lib;
   const cont = continueList();
   const s1 = shelf('Continuar assistindo', cont, null, (c, it) => {
-    const x = h('div', 'f mini', '✕'); x.onok = () => { removeProg(it.key); renderApp(); first(); }; c.appendChild(x);
+    const x = h('div', 'f mini', ic('close')); x.onok = () => { removeProg(it.key); renderApp(); first(); }; c.appendChild(x);
   });
   if (s1) sc.appendChild(s1);
   const fl = lib.live.filter((i) => S.favs.has(i.key));
@@ -167,7 +168,7 @@ function renderRec(body) {
 }
 
 function yearBtn(items, rerender) {
-  const b = h('div', 'f btn sm', V.year ? '📅 ' + V.year + ' ✕' : '📅 Ano');
+  const b = h('div', 'f btn sm', V.year ? ic('cal') + ' ' + V.year + ' ' + ic('close') : ic('cal') + ' Ano');
   b.onok = () => {
     if (V.year) { V.year = ''; rerender(); return; }
     const ys = Array.from(new Set(items.map((i) => yearOf(i.title)).filter(Boolean))).sort().reverse();
@@ -225,11 +226,11 @@ function renderFavs(body) {
   const f = (l) => l.filter((i) => S.favs.has(i.key));
   const add = (s) => { if (s) sc.appendChild(s); };
   const fl = f(lib.live);
-  add(shelf('★ Canais', fl, { list: fl })); add(shelf('★ Filmes', f(lib.movies))); add(shelf('★ Séries', f(lib.series)));
+  add(shelf('Canais favoritos', fl, { list: fl })); add(shelf('Filmes favoritos', f(lib.movies))); add(shelf('Séries favoritas', f(lib.series)));
   const gs = groups();
   for (const name of Object.keys(gs)) {
     const items = gs[name].map((k) => lib.byKey.get(k)).filter(Boolean);
-    const s = shelf('📁 ' + name, items) || h('div', 'shelf', '<h2>📁 ' + esc(name) + '</h2><p class="muted">Grupo vazio. Abra um filme ou série e use “＋ Grupo”.</p>');
+    const s = shelf('Grupo: ' + name, items) || h('div', 'shelf', '<h2>Grupo: ' + esc(name) + '</h2><p class="muted">Grupo vazio. Abra um filme ou série e use “+ Grupo”.</p>');
     const del = h('div', 'f btn sm', 'Excluir grupo');
     del.onok = () => confirmBox('Excluir o grupo "' + name + '"? Os títulos continuam na lista.', () => { groupDelete(name); renderApp(); first(); });
     s.querySelector('h2').appendChild(del);
@@ -255,7 +256,7 @@ async function renderFut(body) {
   box.innerHTML = '';
   const now = futOff === 0 ? F.playingNow(S.lib) : [];
   if (now.length) {
-    const s = h('div', 'shelf'); s.appendChild(h('h2', '', '● Passando jogo agora'));
+    const s = h('div', 'shelf'); s.appendChild(h('h2', '', '<span class="live">' + ic('on') + '</span> Passando jogo agora'));
     const row = h('div', 'row-h');
     now.forEach(({ c, title }) => { const b = h('div', 'f chip', '<b>' + esc(c.title) + '</b><small>' + esc(title) + '</small>'); b.onok = () => open(c, { list: now.map((x) => x.c) }); row.appendChild(b); });
     s.appendChild(row); box.appendChild(s);
@@ -265,11 +266,11 @@ async function renderFut(body) {
   for (const g of list.sort((a, b) => a.league.localeCompare(b.league) || a.date - b.date)) {
     if (g.league !== lg) { lg = g.league; box.appendChild(h('h2', 'lg', esc(lg))); wrap = h('div', 'games'); box.appendChild(wrap); }
     const chs = F.channelsFor(g, S.lib);
-    const st = g.state === 'in' ? '<span class="live">● ' + esc(g.detail) + '</span>' : g.state === 'post' ? esc(g.detail || 'Encerrado') : hhmm(g.date);
+    const st = g.state === 'in' ? '<span class="live">' + ic('on') + ' ' + esc(g.detail) + '</span>' : g.state === 'post' ? esc(g.detail || 'Encerrado') : hhmm(g.date);
     const sc2 = g.state === 'pre' ? 'x' : (g.hs || 0) + ' x ' + (g.as || 0);
     const c = h('div', 'f game', '<div class="st">' + st + '</div><div class="tm"><img src="' + esc(g.hl || '') + '" onerror="this.style.visibility=\'hidden\'">' + esc(g.home) +
       '<b>' + sc2 + '</b>' + esc(g.away) + '<img src="' + esc(g.al || '') + '" onerror="this.style.visibility=\'hidden\'"></div>' +
-      '<div class="chs">' + (chs.length ? chs.map((x) => '📺 ' + esc(x.c.title) + (x.now ? ' <i>● AGORA</i>' : x.at ? ' <i>' + hhmm(x.at) + '</i>' : '')).join('<br>') : '<span class="muted">Sem canal na sua lista</span>') + '</div>');
+      '<div class="chs">' + (chs.length ? chs.map((x) => ic('tv') + ' ' + esc(x.c.title) + (x.now ? ' <i>' + ic('on') + ' AGORA</i>' : x.at ? ' <i>' + hhmm(x.at) + '</i>' : '')).join('<br>') : '<span class="muted">Sem canal na sua lista</span>') + '</div>');
     c.onok = () => { if (chs.length) open(chs[0].c, { list: chs.map((x) => x.c) }); else toast('Nenhum canal da sua lista passa este jogo.'); };
     wrap.appendChild(c);
   }
@@ -317,18 +318,18 @@ export function showDetail(it) {
       for (const e of eps) { const p = S.prog[e.url]; if (p && p.ts > ts) { ts = p.ts; best = p.done ? eps[eps.indexOf(e) + 1] || e : e; } }
       return best;
     };
-    const bp = h('div', 'f btn big autof', '▶ Assistir');
+    const bp = h('div', 'f btn big autof', ic('play') + ' Assistir');
     const setPlay = () => {
       const r = resumeEp();
-      bp.innerHTML = it.kind === 's' ? (r ? '▶ Continuar T' + r.s + ' E' + r.e : eps.length ? '▶ Assistir T' + eps[0].s + ' E' + eps[0].e : '▶ Assistir')
-        : (S.prog[it.eps[0].url] && !S.prog[it.eps[0].url].done && S.prog[it.eps[0].url].t > 10000 ? '▶ Continuar de ' + fmt(S.prog[it.eps[0].url].t) : '▶ Assistir');
+      bp.innerHTML = ic('play') + ' ' + (it.kind === 's' ? (r ? 'Continuar T' + r.s + ' E' + r.e : eps.length ? 'Assistir T' + eps[0].s + ' E' + eps[0].e : 'Assistir')
+        : (S.prog[it.eps[0].url] && !S.prog[it.eps[0].url].done && S.prog[it.eps[0].url].t > 10000 ? 'Continuar de ' + fmt(S.prog[it.eps[0].url].t) : 'Assistir'));
     };
     bp.onok = () => { const e = it.kind === 's' ? (resumeEp() || eps[0]) : it.eps[0]; if (e) play(it, e, { eps, back: () => { setPlay(); renderEps(); focus(bp); } }); };
     btns.appendChild(bp);
-    const bf = h('div', 'f btn', S.favs.has(it.key) ? '★ Favorito' : '☆ Favoritar');
-    bf.onok = () => { const f = toggleFav(it.key); bf.innerHTML = f ? '★ Favorito' : '☆ Favoritar'; };
+    const bf = h('div', 'f btn', S.favs.has(it.key) ? ic('star') + ' Favorito' : ic('staro') + ' Favoritar');
+    bf.onok = () => { const f = toggleFav(it.key); bf.innerHTML = f ? ic('star') + ' Favorito' : ic('staro') + ' Favoritar'; };
     btns.appendChild(bf);
-    const bg2 = h('div', 'f btn', '＋ Grupo'); bg2.onok = () => groupDialog(it); btns.appendChild(bg2);
+    const bg2 = h('div', 'f btn', ic('plus') + ' Grupo'); bg2.onok = () => groupDialog(it); btns.appendChild(bg2);
     right.appendChild(btns);
     const epBox = h('div', 'eps');
     right.appendChild(epBox);
@@ -348,7 +349,7 @@ export function showDetail(it) {
       eps.filter((e) => e.s === season).forEach((e) => {
         const p = S.prog[e.url];
         const nm = e.name && !/s\d+\s?e\d+|\d+x\d+/i.test(e.name) ? e.name : 'Episódio ' + e.e;
-        const r = h('div', 'f ep', '<b>' + e.e + '</b><span>' + esc(nm) + '</span>' + (p ? (p.done ? '<i>✓ visto</i>' : '<i>' + fmt(p.t) + '</i>') : '') +
+        const r = h('div', 'f ep', '<b>' + e.e + '</b><span>' + esc(nm) + '</span>' + (p ? (p.done ? '<i>' + ic('check') + ' visto</i>' : '<i>' + fmt(p.t) + '</i>') : '') +
           (p && p.d && !p.done ? '<div class="pbar"><i style="width:' + Math.min(100, Math.round(100 * p.t / p.d)) + '%"></i></div>' : ''));
         r.onok = () => play(it, e, { eps, back: () => { setPlay(); renderEps(); first(); } });
         list.appendChild(r);
@@ -367,7 +368,7 @@ export function showDetail(it) {
           else { setPlay(); renderEps(); }
         }).catch((e) => {
           epBox.innerHTML = '<p class="muted">Não consegui carregar os episódios: ' + esc(e.message) + '</p>';
-          const b = h('div', 'f btn', '↻ Tentar de novo'); b.onok = loadEps; epBox.appendChild(b);
+          const b = h('div', 'f btn', ic('refresh') + ' Tentar de novo'); b.onok = loadEps; epBox.appendChild(b);
         });
       };
       loadEps();
@@ -378,7 +379,7 @@ export function showDetail(it) {
       if (!inf) { ov.textContent = ''; return; }
       if (inf.ov) ov.textContent = inf.ov; else ov.textContent = '';
       if (inf.img) { const o = poster.querySelector('img'); if (o) o.remove(); poster.appendChild(img(inf.img)); bg.style.backgroundImage = 'url("' + inf.img.replace(/"/g, '%22') + '")'; }
-      meta.textContent = [inf.y || yearOf(it.title), inf.r ? '★ ' + inf.r.toFixed(1) : '', inf.genre, quality(it.title)].filter(Boolean).join(' · ');
+      meta.textContent = [inf.y || yearOf(it.title), inf.r ? 'Nota ' + inf.r.toFixed(1) : '', inf.genre, quality(it.title)].filter(Boolean).join(' · ');
     };
     if (it.logo) bg.style.backgroundImage = 'url("' + it.logo.replace(/"/g, '%22') + '")';
     if (infoCache.has(k)) apply(infoCache.get(k));
@@ -389,8 +390,8 @@ export function showDetail(it) {
 
 function groupDialog(it) {
   const gs = groups();
-  const items = Object.keys(gs).map((n) => ({ name: (gs[n].indexOf(it.key) >= 0 ? '✓ ' : '') + n, g: n }));
-  items.push({ name: '＋ Novo grupo…', nw: true });
+  const items = Object.keys(gs).map((n) => ({ name: (gs[n].indexOf(it.key) >= 0 ? '(no grupo) ' : '') + n, g: n }));
+  items.push({ name: '+ Novo grupo…', nw: true });
   pick('Adicionar a um grupo', items, (x) => {
     if (x.nw) return prompt1('Nome do novo grupo', '', (n) => { n = n.trim(); if (!n) return; groupAdd(n, it.key); toast('Adicionado a "' + n + '"'); });
     const added = groupAdd(x.g, it.key); toast(added ? 'Adicionado a "' + x.g + '"' : 'Removido de "' + x.g + '"');
@@ -488,10 +489,10 @@ function showLists() {
       // conta
       const a = Store.acct;
       const acc = h('div', 'panel');
-      acc.appendChild(h('h2', '', '☁ Conta NTPlay'));
+      acc.appendChild(h('h2', '', ic('cloud') + ' Conta NTPlay'));
       acc.appendChild(h('p', '', 'Usuário: <b>' + esc(a.user) + '</b> · ' + esc(accessText()) + (S.syncMsg ? '<br><span class="muted">' + esc(S.syncMsg) + '</span>' : '')));
       const r1 = h('div', 'dbtns');
-      const bsync = h('div', 'f btn', S.syncBusy ? 'Sincronizando…' : '↻ Sincronizar agora'); bsync.id = 'l-sync'; bsync.onok = () => syncNow(true);
+      const bsync = h('div', 'f btn', S.syncBusy ? 'Sincronizando…' : ic('refresh') + ' Sincronizar agora'); bsync.id = 'l-sync'; bsync.onok = () => syncNow(true);
       const bout = h('div', 'f btn danger', 'Sair da conta'); bout.onok = () => confirmBox('Sair da conta nesta TV?', () => { close(); logout(); });
       r1.appendChild(bsync); r1.appendChild(bout); acc.appendChild(r1);
       sc.appendChild(acc);
@@ -511,15 +512,15 @@ function showLists() {
         }
         const row = h('div', 'lrow', '<div><b>' + esc(l.name) + '</b> ' + badge + '<br><small class="muted">' + esc(l.url.replace(/password=[^&]*/, 'password=•••')) + '</small></div>');
         const bt = h('div', 'lbtns');
-        const t = h('div', 'f btn sm', l.active ? '● Ligada' : '○ Desligada'); t.id = 'l-t-' + l.id; t.onok = async () => { await toggleList(l.id); render(); };
-        const u = h('div', 'f btn sm', '↻ Atualizar'); u.id = 'l-u-' + l.id; u.onok = () => refreshList(l.id);
+        const t = h('div', 'f btn sm', l.active ? ic('on') + ' Ligada' : ic('off') + ' Desligada'); t.id = 'l-t-' + l.id; t.onok = async () => { await toggleList(l.id); render(); };
+        const u = h('div', 'f btn sm', ic('refresh') + ' Atualizar'); u.id = 'l-u-' + l.id; u.onok = () => refreshList(l.id);
         const d = h('div', 'f btn sm danger', 'Excluir'); d.onok = () => confirmBox('Excluir a lista "' + l.name + '"?', async () => { await deleteList(l.id); render(); });
         bt.appendChild(t); bt.appendChild(u); bt.appendChild(d); row.appendChild(bt); pl.appendChild(row);
       }
       for (const pd of Store.pending) {
         const row = h('div', 'lrow', '<div><b>' + esc(pd.name || 'Lista') + '</b> <span class="badge red">não baixou nesta TV</span><br><small class="muted">' + esc((pd.err || '').slice(0, 140)) + '</small></div>');
         const bt = h('div', 'lbtns');
-        const t = h('div', 'f btn sm', '↻ Tentar de novo'); t.onok = async () => { await retryPending(pd.url); render(); };
+        const t = h('div', 'f btn sm', ic('refresh') + ' Tentar de novo'); t.onok = async () => { await retryPending(pd.url); render(); };
         const d = h('div', 'f btn sm danger', 'Excluir'); d.onok = () => confirmBox('Excluir "' + (pd.name || 'lista') + '"? Ela some da nuvem e da TV Android também.', () => { dropPending(pd.url); render(); });
         bt.appendChild(t); bt.appendChild(d); row.appendChild(bt); pl.appendChild(row);
       }
@@ -533,13 +534,13 @@ function showLists() {
       const xu = h('input', 'f inp half'); xu.placeholder = 'Usuário';
       const xp = h('input', 'f inp half'); xp.placeholder = 'Senha';
       [[xs, 'x-s'], [xu, 'x-u'], [xp, 'x-p']].forEach(([i, id]) => { i.id = id; i.value = vals[id] || ''; });
-      const xb = h('div', 'f btn', '＋ Adicionar Xtream'); xb.id = 'x-b';
+      const xb = h('div', 'f btn', ic('plus') + ' Adicionar Xtream'); xb.id = 'x-b';
       xb.onok = async () => { if (await addXtream(xs.value, xu.value, xp.value)) { vals['x-s'] = vals['x-u'] = vals['x-p'] = ''; xs.value = xu.value = xp.value = ''; loadAccounts(); render(); } };
       ad.appendChild(xs); ad.appendChild(xu); ad.appendChild(xp); ad.appendChild(xb);
       ad.appendChild(h('p', 'muted', 'Ou link M3U:'));
       const mu = h('input', 'f inp'); mu.placeholder = 'http://…/lista.m3u';
       mu.id = 'm-u'; mu.value = vals['m-u'] || '';
-      const mb = h('div', 'f btn', '＋ Adicionar M3U'); mb.id = 'm-b';
+      const mb = h('div', 'f btn', ic('plus') + ' Adicionar M3U'); mb.id = 'm-b';
       mb.onok = async () => { if (await addUrl(mu.value)) { vals['m-u'] = ''; mu.value = ''; loadAccounts(); render(); } };
       mu.onenter = () => focus(mb);
       ad.appendChild(mu); ad.appendChild(mb);
@@ -564,6 +565,7 @@ function showLists() {
       opt('Nomes em Base64 (Xtream)', 'b64', yn, reload);
       opt('Adulto pelo nome da categoria', 'adultByName', [[true, 'Sim'], [false, 'Não']], reload);
       sc.appendChild(pf);
+      const dg = h('div', 'f btn sm', ic('check') + ' Diagnóstico (imagens e internet)'); dg.id = 'p-diag'; dg.onok = diagnose; pf.appendChild(dg);
       const ct = h('div', 'panel'); ct.appendChild(contactBox()); sc.appendChild(ct);
       const cl = h('div', 'f btn', 'Fechar'); cl.onok = close; sc.appendChild(cl);
       const k = keep && document.getElementById(keep);
@@ -573,6 +575,47 @@ function showLists() {
     loadAccounts();
     const off = (w) => { if (document.body.contains(sc) && (w === 'busy' || w === 'acct' || w === 'sync' || w === 'lib')) render(); };
     S.on(off);
+  });
+}
+
+// ---------------------------------------------------------------- diagnóstico
+// Mostra na tela o que esta TV consegue abrir. Serve para descobrir por que capas/logos não aparecem
+// (certificados antigos da TV, site bloqueado, sem internet) sem precisar de computador.
+function diagnose() {
+  const live = S.lib.live.find((i) => i.logo && /^http:/.test(i.logo));
+  const tests = [
+    ['img', 'Logos do NTPlay (GitHub Pages)', 'https://natanpg.github.io/NTPlay-webOS/l/qTYv5jt.webp'],
+    ['img', 'Wikimedia', 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/HBO_logo.svg/330px-HBO_logo.svg.png'],
+    ['img', 'imgur', 'https://i.imgur.com/qTYv5jt.png'],
+    ['img', 'TVMaze (capas de séries)', 'https://static.tvmaze.com/uploads/images/medium_portrait/1/4600.jpg'],
+    ['img', 'Logo da sua lista (http)', live ? live.logo : ''],
+    ['net', 'Wikipédia (busca de capas)', 'https://pt.wikipedia.org/w/api.php?origin=*&format=json&action=query&meta=siteinfo'],
+    ['net', 'TVMaze (busca de séries)', 'https://api.tvmaze.com/shows/1'],
+    ['net', 'ESPN (Futebol)', 'https://site.api.espn.com/apis/site/v2/sports/soccer/bra.1/scoreboard'],
+  ];
+  modal((box, close) => {
+    box.classList.add('wide');
+    box.appendChild(h('h2', '', 'Diagnóstico'));
+    const ua = navigator.userAgent;
+    let dev = '';
+    try { const d = window.PalmSystem && JSON.parse(PalmSystem.deviceInfo || '{}'); if (d) dev = [d.modelName, d.platformVersion].filter(Boolean).join(' · webOS '); } catch (e) {}
+    box.appendChild(h('p', 'muted', esc((dev ? dev + ' · ' : '') + 'NTPlay ' + (window.NT_VER || '')) + '<br><small>' + esc(ua) + '</small>'));
+    const l = h('div', 'plist scroll'); box.appendChild(l);
+    for (const [kind, name, url] of tests) {
+      const r = h('div', 'row', esc(name) + ': <b>testando…</b>'); l.appendChild(r);
+      const set = (ok, msg) => { r.innerHTML = esc(name) + ': <b style="color:' + (ok ? 'var(--green)' : 'var(--red)') + '">' + esc(msg) + '</b>'; };
+      if (!url) { set(false, 'sem logo http na lista'); continue; }
+      const t0 = Date.now();
+      if (kind === 'img') {
+        const im = new Image(); const to = setTimeout(() => set(false, 'não carregou em 15 s'), 15000);
+        im.onload = () => { clearTimeout(to); set(im.naturalWidth > 2, 'ok (' + (Date.now() - t0) + ' ms)'); };
+        im.onerror = () => { clearTimeout(to); set(false, 'ERRO ao abrir'); };
+        im.src = url + (url.indexOf('?') < 0 ? '?d=' : '&d=') + Date.now();
+      } else {
+        fetch(url).then((x) => set(x.ok, (x.ok ? 'ok' : 'HTTP ' + x.status) + ' (' + (Date.now() - t0) + ' ms)')).catch((e) => set(false, 'ERRO: ' + (e.message || e)));
+      }
+    }
+    const b = h('div', 'f btn autof', 'Fechar'); b.onok = close; box.appendChild(b);
   });
 }
 

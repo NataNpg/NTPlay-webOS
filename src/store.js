@@ -48,3 +48,27 @@ export const Idb = {
   get: (store, k) => tx(store, 'readonly', (s) => s.get(k)),
   del: (store, k) => tx(store, 'readwrite', (s) => s.delete(k)),
 };
+
+// ---------------------------------------------------------------- listas comprimidas
+// Uma lista Xtream grande passa de 20 MB em texto e estoura a cota de armazenamento da TV
+// ("An attempt was made to add something to storage that exceeded the quota"). Comprimida fica ~6x menor.
+// Se ainda assim não couber, a lista fica só na memória até o app fechar (é baixada de novo ao abrir).
+import { deflateSync, inflateSync, strToU8, strFromU8 } from 'fflate';
+const mem = new Map();
+export const Lists = {
+  async put(id, text) {
+    mem.delete(id);
+    const z = deflateSync(strToU8(text), { level: 6 });
+    try { await Idb.put('lists', id, { z: 1, d: z }); return true; }
+    catch (e) { mem.set(id, text); return false; }
+  },
+  async get(id) {
+    if (mem.has(id)) return mem.get(id);
+    const v = await Idb.get('lists', id).catch(() => null);
+    if (!v) return null;
+    if (typeof v === 'string') return v; // versões até 1.1.2
+    try { return strFromU8(inflateSync(v.d instanceof Uint8Array ? v.d : new Uint8Array(v.d))); } catch (e) { return null; }
+  },
+  async del(id) { mem.delete(id); await Idb.del('lists', id).catch(() => {}); },
+  inMemory: (id) => mem.has(id),
+};

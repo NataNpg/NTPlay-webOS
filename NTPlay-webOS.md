@@ -136,7 +136,7 @@ Roteiro completo em `store/LOJA-LG.md`. Resumo:
 
 ## 7. Problemas conhecidos / pendências
 
-1. **Nada foi testado em TV LG real.** Testes: Chrome em 1920x1080 com teclado (automatizado) e o webOS TV 26 Simulator do usuário.
+1. **Primeiro teste em TV LG real em 02/11/2026** (1.1.x): app abre, login e listas funcionam, filmes e animes tocam. Problemas vistos: lista grande estourava a cota de armazenamento, ícones de texto viravam quadrado, capas e logos de sites https não apareciam (causa ainda não confirmada — usar o Diagnóstico), alguns canais 4K recusados pelo servidor (HTTP de erro no mpegts).
 2. **Vídeo no simulador não vale como teste:** ele não tem os decodificadores da TV (MKV, H.265, AC3/Dolby). "Erro 4" no simulador não significa erro na TV.
 3. **Áudio atrasado no ao vivo:** visto no simulador (mpegts.js). Corrigido pela ordem dos players e pela opção do mpegts; falta confirmar na TV.
 4. **User-Agent fixo:** o navegador não deixa trocar. Servidor que só aceita "VLC" pode recusar (a TV Android não tem esse problema).
@@ -168,4 +168,5 @@ Roteiro completo em `store/LOJA-LG.md`. Resumo:
 | 1.0.3 | Logo exato da base primeiro; logo vazio/lento cai no reserva; nome escrito some atrás do logo |
 | 1.0.4 | Capas sob demanda; preparação para a loja (roda do Magic Remote, texto ≥ 20 px, ícones sem transparência, política, lista de demonstração, roteiro) |
 | 1.0.5 | Capas pela Wikipédia (o iTunes devolvia vazio), também para canais; proxy de imagens |
+| 1.2.x | Primeiro teste em TV real (LG). Listas guardadas comprimidas (~10x menores; antes estourava a cota da TV) e, se ainda assim não couberem, ficam na memória e são baixadas de novo ao abrir; ícones em SVG (símbolos de texto viravam quadrado na TV); botão Legenda removido do player; todos os logos da base copiados para o GitHub Pages; tela de Diagnóstico (☰ Listas → Preferências); erro do player mostra o código HTTP; API Xtream tenta 2x com 60 s e mostra o motivo; TV detectada também pelo User-Agent; capa não encontrada só fica marcada se a internet respondeu |
 | 1.1.x | Logos do imgur copiados para o GitHub Pages; áudio do ao vivo (player nativo primeiro na TV, mpegts sem preencher silêncio); GitHub Pages ligado; versão = execução do Actions |

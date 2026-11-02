@@ -58,8 +58,11 @@ async function streams(c, action, cm, kind, out) {
 
 /** monta a M3U a partir da API (igual à TV) */
 export async function buildM3u(c, progress) {
-  const auth = await getText(c.api(''), 40000).catch(() => null);
-  if (!auth) throw new Error('o servidor não respondeu à API (player_api.php)');
+  let auth = null, why = '';
+  for (let t = 0; t < 2 && !auth; t++) {
+    try { auth = await getText(c.api(''), 60000); } catch (e) { why = e.status ? 'HTTP ' + e.status : (e.message || String(e)); }
+  }
+  if (!auth) throw new Error('o servidor não respondeu à API (player_api.php: ' + why + ')');
   let ui = null;
   try { ui = JSON.parse(auth).user_info; } catch (e) {}
   if (ui && ui.auth === 0) throw new Error('usuário ou senha recusados pelo servidor');

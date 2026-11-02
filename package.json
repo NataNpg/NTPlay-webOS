@@ -1,0 +1,21 @@
+{
+  "name": "ntplay-webos",
+  "version": "1.0.0",
+  "description": "NTPlay para TVs LG (webOS)",
+  "scripts": {
+    "build": "node build.mjs",
+    "package": "node build.mjs && ares-package dist -o out --no-minify"
+  },
+  "author": "Natanael G Silva",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@webos-tools/cli": "^3.2.6",
+    "esbuild": "^0.23.1"
+  },
+  "dependencies": {
+    "hls.js": "^1.5.17",
+    "mpegts.js": "^1.7.3",
+    "qrcode-generator": "^1.4.4"
+  },
+  "private": true
+}

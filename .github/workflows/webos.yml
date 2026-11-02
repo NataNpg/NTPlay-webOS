@@ -1,0 +1,43 @@
+name: webOS (.ipk)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      # versão: a do package.json + número da execução (ex.: 1.0.0 → 1.0.37)
+      - name: Versão
+        id: v
+        run: |
+          base=$(node -p "require('./package.json').version.split('.').slice(0,2).join('.')")
+          echo "ver=$base.${{ github.run_number }}" >> $GITHUB_OUTPUT
+      - run: node build.mjs ${{ steps.v.outputs.ver }}
+      - run: npx ares-package dist -o out
+      - name: Arquivos da release
+        run: |
+          cp out/*.ipk out/NTPlay-webOS.ipk
+          echo "{\"name\":\"${{ steps.v.outputs.ver }}\",\"code\":${{ github.run_number }}}" > out/webos-version.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ntplay-webos
+          path: out/NTPlay-webOS.ipk
+      - name: Publica na release webos-latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete webos-latest --yes --cleanup-tag || true
+          gh release create webos-latest out/NTPlay-webOS.ipk out/webos-version.json \
+            --title "NTPlay webOS ${{ steps.v.outputs.ver }}" \
+            --notes "Instale com: ares-install NTPlay-webOS.ipk (TV em Modo Desenvolvedor) ou pelo Homebrew Channel."

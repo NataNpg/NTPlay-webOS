@@ -2,11 +2,13 @@ import { S, reload, initAccess, startSyncLoop, syncNow, autoUpdate, loadAccounts
 import * as Nav from './nav.js';
 import { renderApp, renderLogin, onState } from './ui.js';
 import * as Presence from './presence.js';
+import * as Covers from './covers.js';
 
 const VER = typeof __VER__ !== 'undefined' ? __VER__ : 'dev';
 
 async function boot() {
   Nav.init();
+  await Covers.init();
   S.on(onState);
   initAccess();
   const sp = document.getElementById('splash');

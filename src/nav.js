@@ -140,6 +140,20 @@ export function init() {
     if (f.tagName === 'INPUT') return;
     if (f.onok && !f.onclick) { e.preventDefault(); f.onok(); }
   });
+  // roda do Magic Remote / mouse: rola a lista sob o cursor (exigência do checklist da LG)
+  document.addEventListener('wheel', (e) => {
+    let p = e.target;
+    while (p && p !== document.body) {
+      const vert = p.scrollHeight > p.clientHeight + 2 && /(auto|scroll|hidden)/.test(getComputedStyle(p).overflowY);
+      const hor = !vert && p.scrollWidth > p.clientWidth + 2 && p.classList.contains('row-h');
+      if (vert || hor) {
+        if (vert) p.scrollTop += e.deltaY; else p.scrollLeft += e.deltaY || e.deltaX;
+        if (vert && p.scrollTop + p.clientHeight > p.scrollHeight - 700) { const g = p.querySelector('.grid'); if (g && g._more) g._more(); }
+        e.preventDefault(); return;
+      }
+      p = p.parentElement;
+    }
+  }, { passive: false });
   // cursor do Magic Remote some: volta o foco visual
   document.addEventListener('cursorStateChange', (e) => { if (e.detail && !e.detail.visibility && !current()) first(); });
 }

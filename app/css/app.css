@@ -69,11 +69,11 @@ small { font-size: .78em; color: var(--muted); }
 .card.ch .art img { object-fit: contain; padding: 16px; }
 .card .cap { padding: 8px 4px 0; height: 76px; overflow: hidden; }
 .card .cap b { display: block; font-size: 21px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.card .cap small { font-size: 18px; }
+.card .cap small { font-size: 20px; }
 .card.focus { transform: scale(1.08); z-index: 3; }
 .card.focus .art { box-shadow: 0 0 0 5px #fff; }
 .card.focus .cap b { color: #fff; }
-.tag { position: absolute; z-index: 2; right: 8px; top: 8px; font-size: 16px; font-weight: 800; padding: 3px 8px; border-radius: 6px; }
+.tag { position: absolute; z-index: 2; right: 8px; top: 8px; font-size: 20px; font-weight: 800; padding: 3px 8px; border-radius: 6px; }
 .tag.leg { background: var(--cyan); color: #04202a; }
 .tag.dub { background: var(--purple); color: #fff; }
 .star { position: absolute; z-index: 2; left: 8px; top: 6px; color: var(--yellow); font-size: 28px; text-shadow: 0 2px 4px #000; }
@@ -128,9 +128,9 @@ small { font-size: .78em; color: var(--muted); }
 .panel { background: var(--panel); border-radius: 16px; padding: 22px 26px 12px; margin-bottom: 18px; }
 .panel h2 { font-size: 30px; }
 .lrow { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-top: 1px solid rgba(255,255,255,.08); }
-.lrow small { font-size: 18px; }
+.lrow small { font-size: 20px; }
 .lbtns { display: flex; flex: none; }
-.badge { font-size: 18px; padding: 3px 10px; border-radius: 8px; background: var(--btn); margin-left: 10px; }
+.badge { font-size: 20px; padding: 3px 10px; border-radius: 8px; background: var(--btn); margin-left: 10px; }
 .badge.green { background: #12543d; } .badge.yellow { background: #6b5317; } .badge.red { background: #6b1f2a; }
 .contact { display: flex; align-items: center; line-height: 1.5; }
 .contact .qr { margin-right: 26px; }

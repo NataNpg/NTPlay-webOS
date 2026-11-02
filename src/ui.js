@@ -7,6 +7,7 @@ import { esc, yearOf, quality, audioTag, animeSrc, cleanT, fmt, hhmm, norm } fro
 import * as X from './xtream.js';
 import * as F from './futebol.js';
 import { play, isOpen, close as closePlayer } from './player.js';
+import * as Covers from './covers.js';
 
 const $ = (s, r) => (r || document).querySelector(s);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -23,16 +24,22 @@ export function toast(m) {
 
 // ---------------------------------------------------------------- imagens sob demanda
 const io = 'IntersectionObserver' in window ? new IntersectionObserver((es) => {
-  for (const e of es) if (e.isIntersecting) { const i = e.target; io.unobserve(i); i.src = i.dataset.src; }
+  for (const e of es) if (e.isIntersecting) { const i = e.target; io.unobserve(i); if (i.dataset.src) i.src = i.dataset.src; else if (i._miss) i._miss(); }
 }, { rootMargin: '400px' }) : null;
-function img(src, cls, alt) {
+/** miss: chamado quando não há imagem (ou nenhuma abriu) e o card está na tela — busca a capa em outro lugar */
+function img(src, cls, alt, miss) {
   const i = h('img', cls || '');
   i.decoding = 'async';
-  const fail = () => { if (alt && i.src !== alt) { i.src = alt; alt = ''; } else { i.style.visibility = 'hidden'; if (i.parentNode) i.parentNode.classList.remove('ok'); } };
+  if (miss) i._miss = () => { i._miss = null; miss((u) => { i.style.visibility = ''; i.src = u; }); };
+  const fail = () => {
+    if (alt && i.src !== alt) { i.src = alt; alt = ''; return; }
+    i.style.visibility = 'hidden'; if (i.parentNode) i.parentNode.classList.remove('ok');
+    if (i._miss) i._miss();
+  };
   i.onerror = fail;
   // carregou: esconde o nome escrito atrás (logo transparente não mistura com o texto); imagem vazia (1x1) conta como erro
   i.onload = () => { if (i.naturalWidth <= 2) return fail(); if (i.parentNode) i.parentNode.classList.add('ok'); };
-  if (!src) { i.style.visibility = 'hidden'; return i; }
+  if (!src) { i.style.visibility = 'hidden'; if (miss && io) io.observe(i); else if (i._miss) i._miss(); return i; }
   if (io) { i.dataset.src = src; io.observe(i); } else i.src = src;
   // servidor de logo lento: depois de 8 s tenta o reserva
   if (alt) setTimeout(() => { if (!i.complete && i.src && document.body.contains(i)) fail(); }, 12000);
@@ -44,7 +51,7 @@ function card(it, ctx) {
   const live = it.kind === 'l';
   const c = h('div', 'f card' + (live ? ' ch' : ''));
   const art = h('div', 'art');
-  art.appendChild(img(it.logo, '', it.logoAlt));
+  art.appendChild(img(it.logo || Covers.known(it), '', it.logoAlt, live ? null : (set) => Covers.want(it, set)));
   const ph = h('div', 'ph', esc(cleanT(it.title)));
   art.appendChild(ph);
   if (!live) { const t = audioTag(it); if (t) art.appendChild(h('span', 'tag ' + t.toLowerCase(), t)); }
@@ -81,6 +88,7 @@ function grid(items, ctx, empty) {
     }
   };
   more();
+  g._more = () => { if (n < items.length) more(); };
   return g;
 }
 function shelf(title, items, ctx, extra) {
@@ -283,7 +291,7 @@ export function showDetail(it) {
     L.classList.add('detail');
     const bg = h('div', 'dbg'); L.appendChild(bg);
     const left = h('div', 'dleft');
-    const poster = h('div', 'poster'); poster.appendChild(h('div', 'ph', esc(cleanT(it.title)))); poster.appendChild(img(it.logo)); left.appendChild(poster);
+    const poster = h('div', 'poster'); poster.appendChild(h('div', 'ph', esc(cleanT(it.title)))); poster.appendChild(img(it.logo || Covers.known(it), '', '', (set) => Covers.want(it, set))); left.appendChild(poster);
     const right = h('div', 'dright scroll');
     right.appendChild(h('h1', '', esc(cleanT(it.title) || it.title)));
     const meta = h('div', 'meta', esc([yearOf(it.title), quality(it.title), it.group, audioTag(it) === 'DUB' ? 'Dublado' : audioTag(it) === 'LEG' ? 'Legendado' : ''].filter(Boolean).join(' · ')));
@@ -361,7 +369,7 @@ export function showDetail(it) {
     };
     if (it.logo) bg.style.backgroundImage = 'url("' + it.logo.replace(/"/g, '%22') + '")';
     if (infoCache.has(k)) apply(infoCache.get(k));
-    else X.info(it).then((inf) => { infoCache.set(k, inf); apply(inf); }).catch(() => apply(null));
+    else X.info(it).then((inf) => { infoCache.set(k, inf); if (inf && inf.img) Covers.put(it, inf.img); apply(inf); }).catch(() => apply(null));
     first(L);
   });
 }
@@ -448,7 +456,7 @@ export function qr(text, cell) {
 function contactBox() {
   const w = h('div', 'contact');
   w.appendChild(qr('https://wa.me/' + WHATS, 4));
-  w.appendChild(h('div', '', '<b>Peça seu teste do aplicativo ou da lista</b><br>WhatsApp (42) 92002-8569'));
+  w.appendChild(h('div', '', '<b>Peça seu acesso ao aplicativo</b><br>WhatsApp (42) 92002-8569'));
   return w;
 }
 
@@ -506,6 +514,7 @@ function showLists() {
       // adicionar
       const ad = h('div', 'panel');
       ad.appendChild(h('h2', '', 'Adicionar lista'));
+      ad.appendChild(h('p', 'muted', 'O NTPlay é só um reprodutor: não vende nem fornece canais, filmes ou listas. Use apenas listas e conteúdos que você tem direito de assistir.'));
       ad.appendChild(h('p', 'muted', 'Xtream Codes (servidor, usuário e senha):'));
       const xs = h('input', 'f inp'); xs.placeholder = 'Servidor (ex.: http://meuservidor.com:8080)';
       const xu = h('input', 'f inp half'); xu.placeholder = 'Usuário';
@@ -573,6 +582,7 @@ export function renderLogin() {
   w.appendChild(l);
   const r = h('div', 'rcol');
   r.appendChild(contactBox());
+  r.appendChild(h('p', 'muted', 'O NTPlay é só um reprodutor de listas M3U/Xtream. Não fornece canais, filmes nem listas.'));
   r.appendChild(h('p', 'muted', 'O acesso é liberado pelo administrador. Use o mesmo usuário e senha do NTPlay na TV Android: suas listas, favoritos e “continuar assistindo” vêm junto.'));
   w.appendChild(r);
   app.appendChild(w);

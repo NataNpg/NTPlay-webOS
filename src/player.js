@@ -14,8 +14,12 @@ function engines(url, live) {
   const out = [];
   if (u.endsWith('.m3u8')) { out.push(['native', url]); if (hasMse && window.Hls && Hls.isSupported()) out.push(['hls', url]); if (live) out.push(['mpegts', url.replace(/\.m3u8(\?|$)/i, '.ts$1')]); }
   else if (live) {
+    // TV LG de verdade: o player nativo do webOS toca TS com o decodificador da TV e mantém áudio e vídeo juntos.
+    // O mpegts.js (JavaScript) fica de reserva — é ele que roda no simulador/PC e pode atrasar o áudio.
+    const onTv = !!(window.PalmSystem || window.webOSSystem) && !/Simulator/i.test(navigator.userAgent);
+    if (onTv) out.push(['native', url]);
     if (hasMse && window.mpegts && mpegts.getFeatureList().mseLivePlayback) out.push(['mpegts', url]);
-    out.push(['native', url]);
+    if (!onTv) out.push(['native', url]);
     if (u.endsWith('.ts')) { const h = url.replace(/\.ts(\?|$)/i, '.m3u8$1'); out.push(['native', h]); if (hasMse && window.Hls && Hls.isSupported()) out.push(['hls', h]); }
   } else {
     out.push(['native', url]);
@@ -57,7 +61,7 @@ function tryEngine(i, startAt) {
     h.on(Hls.Events.ERROR, (e, d) => { if (d.fatal) next('hls: ' + d.details); });
     h.on(Hls.Events.MANIFEST_PARSED, () => { tracksChanged(); });
   } else if (kind === 'mpegts' || kind === 'mpegtsvod') {
-    const p = mpegts.createPlayer({ type: 'mpegts', isLive: kind === 'mpegts', url }, { enableWorker: false, lazyLoad: false, liveBufferLatencyChasing: false, autoCleanupSourceBuffer: true, fixAudioTimestampGap: true });
+    const p = mpegts.createPlayer({ type: 'mpegts', isLive: kind === 'mpegts', url }, { enableWorker: false, lazyLoad: false, liveBufferLatencyChasing: false, autoCleanupSourceBuffer: true, fixAudioTimestampGap: false, accurateSeek: true });
     P.mp = p; p.attachMediaElement(v); p.load();
     p.on(mpegts.Events.ERROR, (t, d) => { if (P && P.started) reconnect('mpegts: ' + d); else next('mpegts: ' + d); });
     // servidor que entrega o canal em pedaços e fecha a conexão: reconecta na hora

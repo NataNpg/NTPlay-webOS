@@ -10,8 +10,17 @@ function load() {
   return loading;
 }
 function expand(u) {
-  if (u && u[0] === '~') { const p = map._p && map._p[u.slice(0, 2)]; if (p) return p + u.slice(2); }
+  if (u && u[0] === '~') {
+    // "~m<id>": cópia no GitHub Pages do projeto (o imgur não abre na TV)
+    if (u[1] === 'm') return (map._p['~m'] || 'https://natanpg.github.io/NTPlay-webOS/l/') + u.slice(2) + '.webp';
+    const p = map._p && map._p[u.slice(0, 2)]; if (p) return p + u.slice(2);
+  }
   return u || '';
+}
+/** endereço original no imgur de um logo copiado (reserva se a cópia faltar) */
+export function original(url) {
+  const m = /\/NTPlay-webOS\/l\/([A-Za-z0-9]+)\.webp$/.exec(url || '');
+  return m ? 'https://i.imgur.com/' + m[1] + '.png' : '';
 }
 /** devolve [logo, exato?] — exato = o nome do canal bate inteiro com a base */
 export function find2(name) {
@@ -40,6 +49,7 @@ export async function apply(lib) {
   for (const it of lib.live) {
     const [f, exact] = find2(it.title);
     if (!f || f === it.logo) continue;
+    it.logoOrig = original(f);
     if (!it.logo) it.logo = f;
     // logo da base com o nome exato do canal é conferido e leve: vem primeiro; o da lista fica de reserva.
     // Muitas listas trazem logo quebrado, lento ou transparente, que nunca dá erro e deixa o card vazio.

@@ -27,14 +27,14 @@ const io = 'IntersectionObserver' in window ? new IntersectionObserver((es) => {
   for (const e of es) if (e.isIntersecting) { const i = e.target; io.unobserve(i); i._go(); }
 }, { rootMargin: '400px' }) : null;
 /** miss: chamado quando não há imagem (ou nenhuma abriu) e o card está na tela — busca a capa em outro lugar */
-function img(src, cls, alt, miss) {
+function img(src, cls, alt, miss, alt2) {
   const i = h('img', cls || '');
   i.decoding = 'async';
   // ordem: imagem da lista → reserva → as mesmas pelo proxy de imagens (contorna bloqueio de site, http, formato
   // que a TV não abre e imagem enorme) → busca de capa em outro lugar
   const q = [];
   const add = (u) => { if (u && q.indexOf(u) < 0) q.push(u); };
-  add(src); add(alt); add(proxy(src)); add(proxy(alt));
+  add(src); add(alt); add(alt2); add(proxy(src)); add(proxy(alt));
   let k = 0;
   if (miss) i._miss = () => { i._miss = null; miss((u) => { q.length = 0; k = 0; add(u); add(proxy(u)); i.style.visibility = ''; i.src = q[k++]; }); };
   const fail = () => {
@@ -64,7 +64,7 @@ function card(it, ctx) {
   const live = it.kind === 'l';
   const c = h('div', 'f card' + (live ? ' ch' : ''));
   const art = h('div', 'art');
-  art.appendChild(img(it.logo || Covers.known(it), '', it.logoAlt, (set) => Covers.want(it, set)));
+  art.appendChild(img(it.logo || Covers.known(it), '', it.logoAlt, (set) => Covers.want(it, set), it.logoOrig));
   const ph = h('div', 'ph', esc(cleanT(it.title)));
   art.appendChild(ph);
   if (!live) { const t = audioTag(it); if (t) art.appendChild(h('span', 'tag ' + t.toLowerCase(), t)); }

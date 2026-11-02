@@ -29,7 +29,6 @@ export function known(it) { const c = cache && cache[it.key]; return c && c.u ? 
 
 /** pede a capa; cb(url) quando achar */
 export function want(it, cb) {
-  if (it.kind === 'l') return;
   loadCache().then(() => {
     const c = cache[it.key];
     if (c && (c.u || Date.now() - c.t < 7 * DAY)) { if (c.u) cb(c.u); return; } // "não achei" vale 7 dias
@@ -57,29 +56,53 @@ function pump() {
 
 const sameT = (a, b) => { const x = norm(a), y = norm(b); if (!x || !y) return false; if (x === y) return true; const wa = x.split(' '); const hit = wa.filter((w) => (' ' + y + ' ').indexOf(' ' + w + ' ') >= 0).length; return hit / wa.length >= 0.85; };
 
+// confirma que a imagem abre de verdade antes de aceitar (o servidor Xtream às vezes devolve link quebrado)
+function imgOk(u) {
+  return new Promise((res) => {
+    if (!u) return res(false);
+    const im = new Image(); const t = setTimeout(() => res(false), 10000);
+    im.onload = () => { clearTimeout(t); res(im.naturalWidth > 2); };
+    im.onerror = () => { clearTimeout(t); res(false); };
+    im.src = u;
+  });
+}
+const viaProxy = (u) => 'https://images.weserv.nl/?w=360&we&output=jpg&url=' + encodeURIComponent(u.replace(/^https?:\/\//, ''));
+async function good(u) { if (!u) return ''; if (await imgOk(u)) return u; const p = viaProxy(u); return (await imgOk(p)) ? p : ''; }
+
 async function find(it) {
-  try { const i = await X.info(it); if (i && i.img) return i.img; } catch (e) {}
-  const t = cleanT(it.title).replace(/^\d+\s*-\s*/, '').replace(/\s*-\s*\d{4}$/, '').trim();
+  let u = '';
+  try { const i = await X.info(it); if (i && i.img) u = await good(i.img); } catch (e) {}
+  if (u) return u;
+  u = await find2(it);
+  return good(u);
+}
+async function find2(it) {
+  let t = cleanT(it.title).replace(/^\d+\s*-\s*/, '').replace(/\s*-\s*\d{4}$/, '').trim();
+  if (it.kind === 'l') t = t.replace(/\b(sd|hd|fhd|uhd|4k|h265|hevc|alt|24h)\b/gi, ' ').replace(/\s+/g, ' ').trim();
   const y = yearOf(it.title);
   if (!t) return '';
-  if (it.kind === 'm') {
-    const txt = await getQuick('https://itunes.apple.com/search?media=movie&entity=movie&country=BR&limit=8&term=' + encodeURIComponent(t));
-    if (!txt) return '';
-    let best = null;
-    for (const r of (JSON.parse(txt).results || [])) {
-      if (!r.artworkUrl100 || !sameT(t, r.trackName || '')) continue;
-      const ry = (r.releaseDate || '').slice(0, 4);
-      if (y && ry && Math.abs(+ry - +y) > 1) continue;
-      best = r; break;
+  if (it.kind === 's') {
+    const txt = await getQuick('https://api.tvmaze.com/search/shows?q=' + encodeURIComponent(t));
+    if (txt) {
+      for (const r of JSON.parse(txt) || []) {
+        const s = r.show; if (!s || !s.image || !sameT(t, s.name || '')) continue;
+        if (y && s.premiered && Math.abs(+s.premiered.slice(0, 4) - +y) > 1) continue;
+        return s.image.medium || s.image.original || '';
+      }
     }
-    return best ? best.artworkUrl100.replace(/\/\d+x\d+bb\./, '/300x450bb.') : '';
   }
-  const txt = await getQuick('https://api.tvmaze.com/search/shows?q=' + encodeURIComponent(t));
-  if (!txt) return '';
-  for (const r of JSON.parse(txt) || []) {
-    const s = r.show; if (!s || !s.image || !sameT(t, s.name || '')) continue;
-    if (y && s.premiered && Math.abs(+s.premiered.slice(0, 4) - +y) > 1) continue;
-    return s.image.medium || s.image.original || '';
+  // Wikipédia (pt, depois en): imagem principal do artigo cujo título bate com o nome
+  const hint = it.kind === 'm' ? ['filme', 'film'] : it.kind === 's' ? ['série', 'series'] : ['canal de televisão', 'tv channel'];
+  for (const [lang, h] of [['pt', hint[0]], ['en', hint[1]]]) {
+    const txt = await getQuick('https://' + lang + '.wikipedia.org/w/api.php?origin=*&format=json&action=query&generator=search&gsrlimit=5&gsrsearch=' +
+      encodeURIComponent(t + ' ' + (y ? y + ' ' : '') + h) + '&prop=pageimages&piprop=thumbnail&pithumbsize=300');
+    if (!txt) continue;
+    let pages = [];
+    try { pages = Object.values((JSON.parse(txt).query || {}).pages || {}).sort((a, b) => (a.index || 0) - (b.index || 0)); } catch (e) {}
+    for (const p of pages) {
+      const name = (p.title || '').replace(/\s*\(.*?\)\s*$/, '');
+      if (p.thumbnail && p.thumbnail.source && sameT(t, name)) return p.thumbnail.source;
+    }
   }
   return '';
 }

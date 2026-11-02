@@ -24,26 +24,39 @@ export function toast(m) {
 
 // ---------------------------------------------------------------- imagens sob demanda
 const io = 'IntersectionObserver' in window ? new IntersectionObserver((es) => {
-  for (const e of es) if (e.isIntersecting) { const i = e.target; io.unobserve(i); if (i.dataset.src) i.src = i.dataset.src; else if (i._miss) i._miss(); }
+  for (const e of es) if (e.isIntersecting) { const i = e.target; io.unobserve(i); i._go(); }
 }, { rootMargin: '400px' }) : null;
 /** miss: chamado quando não há imagem (ou nenhuma abriu) e o card está na tela — busca a capa em outro lugar */
 function img(src, cls, alt, miss) {
   const i = h('img', cls || '');
   i.decoding = 'async';
-  if (miss) i._miss = () => { i._miss = null; miss((u) => { i.style.visibility = ''; i.src = u; }); };
+  // ordem: imagem da lista → reserva → as mesmas pelo proxy de imagens (contorna bloqueio de site, http, formato
+  // que a TV não abre e imagem enorme) → busca de capa em outro lugar
+  const q = [];
+  const add = (u) => { if (u && q.indexOf(u) < 0) q.push(u); };
+  add(src); add(alt); add(proxy(src)); add(proxy(alt));
+  let k = 0;
+  if (miss) i._miss = () => { i._miss = null; miss((u) => { q.length = 0; k = 0; add(u); add(proxy(u)); i.style.visibility = ''; i.src = q[k++]; }); };
   const fail = () => {
-    if (alt && i.src !== alt) { i.src = alt; alt = ''; return; }
+    clearTimeout(i._t);
+    if (k < q.length) { i.src = q[k++]; arm(); return; }
     i.style.visibility = 'hidden'; if (i.parentNode) i.parentNode.classList.remove('ok');
     if (i._miss) i._miss();
   };
+  // servidor lento: depois de 10 s passa para a próxima opção
+  const arm = () => { clearTimeout(i._t); i._t = setTimeout(() => { if (!i.complete && document.body.contains(i)) fail(); }, 10000); };
   i.onerror = fail;
   // carregou: esconde o nome escrito atrás (logo transparente não mistura com o texto); imagem vazia (1x1) conta como erro
-  i.onload = () => { if (i.naturalWidth <= 2) return fail(); if (i.parentNode) i.parentNode.classList.add('ok'); };
-  if (!src) { i.style.visibility = 'hidden'; if (miss && io) io.observe(i); else if (i._miss) i._miss(); return i; }
-  if (io) { i.dataset.src = src; io.observe(i); } else i.src = src;
-  // servidor de logo lento: depois de 8 s tenta o reserva
-  if (alt) setTimeout(() => { if (!i.complete && i.src && document.body.contains(i)) fail(); }, 12000);
+  i.onload = () => { clearTimeout(i._t); if (i.naturalWidth <= 2) return fail(); if (i.parentNode) i.parentNode.classList.add('ok'); };
+  i._go = () => { if (k < q.length) { i.src = q[k++]; arm(); } else if (i._miss) i._miss(); };
+  if (!q.length) i.style.visibility = 'hidden';
+  if (io) io.observe(i); else i._go();
   return i;
+}
+/** proxy público de imagens (images.weserv.nl): busca do lado do servidor e entrega PNG pequeno */
+function proxy(u) {
+  if (!u || /^data:|images\.weserv\.nl|imgur\.com/.test(u)) return ''; // o imgur recusa o proxy
+  return 'https://images.weserv.nl/?w=360&we&output=png&url=' + encodeURIComponent(u.replace(/^https?:\/\//, ''));
 }
 
 // ---------------------------------------------------------------- cartões
@@ -51,7 +64,7 @@ function card(it, ctx) {
   const live = it.kind === 'l';
   const c = h('div', 'f card' + (live ? ' ch' : ''));
   const art = h('div', 'art');
-  art.appendChild(img(it.logo || Covers.known(it), '', it.logoAlt, live ? null : (set) => Covers.want(it, set)));
+  art.appendChild(img(it.logo || Covers.known(it), '', it.logoAlt, (set) => Covers.want(it, set)));
   const ph = h('div', 'ph', esc(cleanT(it.title)));
   art.appendChild(ph);
   if (!live) { const t = audioTag(it); if (t) art.appendChild(h('span', 'tag ' + t.toLowerCase(), t)); }

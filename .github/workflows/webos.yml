@@ -17,6 +17,9 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
+      # logos dos canais (base pública do iptv-org), atualizados a cada compilação; se falhar, usa o que já está no repositório
+      - name: Logos
+        run: git clone --depth 1 https://github.com/iptv-org/database /tmp/iptvdb && node tools/build-logos.mjs /tmp/iptvdb/data || echo "mantendo app/logos.json"
       # versão: a do package.json + número da execução (ex.: 1.0.0 → 1.0.37)
       - name: Versão
         id: v

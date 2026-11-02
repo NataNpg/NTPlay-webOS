@@ -12,7 +12,7 @@ img { display: block; }
 small { font-size: .78em; color: var(--muted); }
 
 /* foco: fundo branco e texto escuro (legível em TV com cor estourada, igual à TV Android 1.10.4) */
-.f { cursor: pointer; transition: transform .12s, background .12s; }
+.f { cursor: pointer; }
 .btn, .tab, .grp, .row, .pbtn, .ep, .chip, .game { outline: none; }
 .btn.focus, .tab.focus, .grp.focus, .row.focus, .pbtn.focus, .ep.focus, .chip.focus, .mini.focus { background: #fff !important; color: #0a0f24 !important; }
 .btn.focus small, .grp.focus small, .ep.focus i, .chip.focus small { color: #333 !important; }
@@ -70,7 +70,7 @@ small { font-size: .78em; color: var(--muted); }
 .card .cap b { display: block; font-size: 21px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card .cap small { font-size: 18px; }
 .card.focus { transform: scale(1.08); z-index: 3; }
-.card.focus .art { box-shadow: 0 0 0 5px #fff, 0 10px 30px rgba(0,0,0,.6); }
+.card.focus .art { box-shadow: 0 0 0 5px #fff; }
 .card.focus .cap b { color: #fff; }
 .tag { position: absolute; z-index: 2; right: 8px; top: 8px; font-size: 16px; font-weight: 800; padding: 3px 8px; border-radius: 6px; }
 .tag.leg { background: var(--cyan); color: #04202a; }
@@ -87,9 +87,9 @@ small { font-size: .78em; color: var(--muted); }
 .row-h > * { flex: none; margin-right: 24px; }
 
 /* ---------- detalhes */
-.detail .dbg { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; background-size: cover; background-position: center; opacity: .18; filter: blur(14px); }
+.detail .dbg { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; background-size: cover; background-position: center; opacity: .12; }
 .dleft { position: absolute; left: 80px; top: 70px; }
-.poster { width: 400px; height: 600px; border-radius: 16px; overflow: hidden; background: var(--card); box-shadow: 0 20px 50px rgba(0,0,0,.6); }
+.poster { width: 400px; height: 600px; border-radius: 16px; overflow: hidden; background: var(--card); }
 .poster { position: relative; }
 .poster img { width: 100%; height: 100%; object-fit: cover; position: relative; z-index: 1; }
 .poster .ph { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 30px; font-size: 34px; font-weight: 700; color: var(--muted); }
@@ -115,7 +115,7 @@ small { font-size: .78em; color: var(--muted); }
 
 /* ---------- modais */
 .modal { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; background: rgba(3,5,14,.82); z-index: 50; }
-.box { position: absolute; left: 50%; top: 50%; width: 900px; margin-left: -450px; transform: translateY(-50%); background: var(--bg2); border-radius: 20px; padding: 36px 40px; max-height: 960px; box-shadow: 0 20px 80px #000; }
+.box { position: absolute; left: 50%; top: 50%; width: 900px; margin-left: -450px; transform: translateY(-50%); background: var(--bg2); border-radius: 20px; padding: 36px 40px; max-height: 960px; }
 .box.wide { width: 1500px; margin-left: -750px; height: 980px; }
 .box h2 { margin-bottom: 18px; }
 .box p { margin-bottom: 20px; line-height: 1.4; }

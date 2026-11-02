@@ -1,9 +1,11 @@
 // Leitura da M3U e montagem da biblioteca — porta de Library.kt (mesmas chaves de item).
 import { maybeB64, isAdult, guess, cleanG, epInfo, norm, theme } from './util.js';
+import { logoKey } from './logokey.js';
 
 function attr(l, key) {
   const k = key + '="';
-  const i = l.toLowerCase().indexOf(k.toLowerCase());
+  let i = l.indexOf(k);
+  if (i < 0) i = l.toLowerCase().indexOf(k);
   if (i < 0) return '';
   const s = i + k.length, e = l.indexOf('"', s);
   return e < 0 ? '' : l.substring(s, e);
@@ -51,7 +53,6 @@ export class Library {
       return Array.from(m.entries()).sort((a, b) => (a[1][0].adult - b[1][0].adult) || a[0].toLowerCase().localeCompare(b[0].toLowerCase()));
     };
     this.liveGroups = grp(live); this.movieGroups = grp(movies); this.serieGroups = grp(series);
-    this.kids = movies.concat(series, live).filter((i) => theme(i) === 'INFANTIL');
     this.anime = series.concat(movies, live).filter((i) => theme(i) === 'ANIMES');
   }
   static empty() { return new Library([], [], []); }
@@ -89,7 +90,7 @@ export class Library {
     }
     // canais sem logo herdam o logo de outra versão (FHD/HD/SD) do mesmo canal
     const lk = new Map();
-    const base = (s) => norm(s).replace(/\b(fhd|hd|sd|4k|uhd|h265|hevc|alt|backup|\d+fps)\b/g, '').replace(/\s+/g, ' ').trim();
+    const base = logoKey;
     for (const o of live) if (o.logo) { const k = base(o.title); if (!lk.has(k)) lk.set(k, o.logo); }
     for (const o of live) if (!o.logo) { const l = lk.get(base(o.title)); if (l) o.logo = l; }
     const ser = Array.from(sm.values());

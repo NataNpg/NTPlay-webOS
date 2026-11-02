@@ -83,8 +83,8 @@ export function audioTag(it) {
 }
 export function theme(it) {
   const t = it.kind === 'l' ? it.group + ' ' + it.title : it.group;
-  if (kids.test(t)) return 'INFANTIL';
   if (animeR.test(t) || (it.kind !== 'l' && animeSrc(it))) return 'ANIMES';
+  if (kids.test(t)) return 'INFANTIL';
   return '';
 }
 export function fmt(ms) {

@@ -6,6 +6,7 @@ import * as X from './xtream.js';
 import * as Sync from './sync.js';
 import { getText } from './net.js';
 import { sleep } from './util.js';
+import * as Logos from './logos.js';
 
 const listeners = [];
 export const S = {
@@ -29,7 +30,10 @@ export async function reload() {
     if (t) texts.push({ id: l.id, text: t });
   }
   const p = Store.prefs;
-  S.lib = Library.build(texts, { adult: p.adult, b64: p.b64, adultByName: p.adultByName !== false });
+  const lib = Library.build(texts, { adult: p.adult, b64: p.b64, adultByName: p.adultByName !== false });
+  texts.length = 0; // libera as listas brutas da memória
+  await Logos.apply(lib);
+  S.lib = lib;
   S.emit('lib');
 }
 

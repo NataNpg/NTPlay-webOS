@@ -62,7 +62,7 @@ export function loadEpg(lib, force) {
       const k = norm(c.title).replace(/\b(fhd|hd|sd|4k|uhd|h265|alt)\b/g, '').replace(/\s+/g, ' ').trim();
       if (k && !reps.has(k)) reps.set(k, c);
     }
-    const list = Array.from(reps.values()).slice(0, 120);
+    const list = Array.from(reps.values()).slice(0, 60);
     const m = new Map();
     let i = 0;
     const worker = async () => {

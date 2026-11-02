@@ -11,7 +11,7 @@ import { play, isOpen, close as closePlayer } from './player.js';
 const $ = (s, r) => (r || document).querySelector(s);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 export const WHATS = '5542920028569';
-const TABS = [['rec', 'RECOMENDAÇÕES'], ['live', 'TV AO VIVO'], ['movies', 'FILMES'], ['series', 'SÉRIES'], ['kids', 'INFANTIL'], ['anime', 'ANIMES'], ['favs', 'FAVORITOS'], ['fut', 'FUTEBOL']];
+const TABS = [['rec', 'RECOMENDAÇÕES'], ['live', 'TV AO VIVO'], ['movies', 'FILMES'], ['series', 'SÉRIES'], ['anime', 'ANIMES'], ['favs', 'FAVORITOS'], ['fut', 'FUTEBOL']];
 
 const V = { tab: 'rec', group: {}, year: '', animeSrc: '', stack: [], scroll: {} };
 
@@ -25,9 +25,10 @@ export function toast(m) {
 const io = 'IntersectionObserver' in window ? new IntersectionObserver((es) => {
   for (const e of es) if (e.isIntersecting) { const i = e.target; io.unobserve(i); i.src = i.dataset.src; }
 }, { rootMargin: '400px' }) : null;
-function img(src, cls) {
+function img(src, cls, alt) {
   const i = h('img', cls || '');
-  i.onerror = () => { i.style.visibility = 'hidden'; };
+  i.decoding = 'async';
+  i.onerror = () => { if (alt && i.src !== alt) { i.src = alt; alt = ''; } else i.style.visibility = 'hidden'; };
   if (!src) { i.style.visibility = 'hidden'; return i; }
   if (io) { i.dataset.src = src; io.observe(i); } else i.src = src;
   return i;
@@ -38,7 +39,7 @@ function card(it, ctx) {
   const live = it.kind === 'l';
   const c = h('div', 'f card' + (live ? ' ch' : ''));
   const art = h('div', 'art');
-  art.appendChild(img(it.logo));
+  art.appendChild(img(it.logo, '', it.logoAlt));
   const ph = h('div', 'ph', esc(cleanT(it.title)));
   art.appendChild(ph);
   if (!live) { const t = audioTag(it); if (t) art.appendChild(h('span', 'tag ' + t.toLowerCase(), t)); }
@@ -67,10 +68,10 @@ function grid(items, ctx, empty) {
   if (!items.length) { g.appendChild(h('div', 'empty', esc(empty || 'Nada por aqui.'))); return g; }
   let n = 0;
   const more = () => {
-    const end = Math.min(items.length, n + 60);
+    const end = Math.min(items.length, n + 40);
     for (; n < end; n++) {
       const c = card(items[n], ctx); c.dataset.k = items[n].key;
-      if (n >= end - 14) { const mark = n; c.onfocus2 = () => { if (mark >= n - 14 && n < items.length) more(); }; }
+      if (n >= end - 10) { const mark = n; c.onfocus2 = () => { if (mark >= n - 10 && n < items.length) more(); }; }
       g.appendChild(c);
     }
   };
@@ -82,7 +83,7 @@ function shelf(title, items, ctx, extra) {
   const s = h('div', 'shelf');
   s.appendChild(h('h2', '', esc(title)));
   const row = h('div', 'row-h');
-  items.slice(0, 40).forEach((it) => { const c = card(it, ctx); c.dataset.k = it.key; if (extra) extra(c, it); row.appendChild(c); });
+  items.slice(0, 20).forEach((it) => { const c = card(it, ctx); c.dataset.k = it.key; if (extra) extra(c, it); row.appendChild(c); });
   s.appendChild(row);
   return s;
 }
@@ -115,7 +116,7 @@ export function renderApp() {
     body.appendChild(w); return;
   }
   ({ rec: renderRec, live: () => renderBrowse('live'), movies: () => renderBrowse('movies'), series: () => renderBrowse('series'),
-    kids: renderKids, anime: renderAnime, favs: renderFavs, fut: renderFut })[V.tab](body);
+    anime: renderAnime, favs: renderFavs, fut: renderFut })[V.tab](body);
 }
 
 function renderRec(body) {
@@ -178,15 +179,6 @@ function renderBrowse(kind) {
   body.appendChild(side); body.appendChild(main);
 }
 
-function renderKids(body) {
-  const main = h('div', 'main full');
-  const items = byYear(S.lib.kids);
-  const head = h('div', 'mhead', '<h2>Infantil <small>' + items.length + '</small></h2>');
-  head.appendChild(yearBtn(S.lib.kids, () => { renderApp(); first(); }));
-  main.appendChild(head);
-  const sc = h('div', 'scroll gridwrap'); sc.appendChild(grid(items, { list: items }, 'Nenhum conteúdo infantil encontrado na lista.')); main.appendChild(sc);
-  body.appendChild(main);
-}
 function renderAnime(body) {
   const main = h('div', 'main full');
   let items = S.lib.anime;
